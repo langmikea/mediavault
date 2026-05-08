@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediaVault</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+<style>
+:root{
+  --bg:#111;--bg2:#1a1a1a;--bg3:#222;--bg4:#2a2a2a;
+  --gold:#C9A84C;--gold2:#a8882e;
+  --text:#ddd;--text2:#999;
+  --red:#c44;--green:#4a4;--blue:#4a8;
+  --border:#333;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:14px/1.5 var(--sans);overflow:hidden;height:100vh}
+button{font-family:var(--sans);cursor:pointer;border:none;padding:6px 14px;border-radius:4px;font-size:13px;background:var(--bg3);color:var(--text)}
+button:hover{background:var(--bg4)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input,textarea,select{font-family:var(--mono);background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:5px 8px;border-radius:3px;font-size:13px}
+textarea{resize:vertical;font:13px var(--sans)}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#444}
+
+#topBar{display:flex;align-items:center;background:var(--bg2);padding:0 16px;height:44px;gap:0}
+#topBar .logo{font:600 16px var(--mono);color:var(--gold);margin-right:24px;white-space:nowrap}
+/* v0.6 Item 6 follow-up: no underline on the title bar or active tab; active
+   tab is indicated by gold text color only. */
+.tab-btn{background:none;color:var(--text2);font:600 13px var(--mono);padding:10px 20px;border-radius:0;letter-spacing:.5px}
+.tab-btn:hover{color:var(--text);background:none}
+.tab-btn.active{color:var(--gold)}
+#topBar .spacer{flex:1}
+/* v0.6 item 5: red alert pill — hidden unless server is unreachable. */
+#topBar .alertBadge{display:none;align-items:center;gap:6px;background:var(--red);color:#fff;padding:4px 10px;border-radius:10px;font:600 11px var(--mono);letter-spacing:.5px;margin-right:12px;cursor:pointer}
+#topBar .alertBadge.visible{display:inline-flex}
+#topBar .alertBadge .dot{width:6px;height:6px;border-radius:50%;background:#fff}
+#topBar .alertBadge:hover{filter:brightness(1.1)}
+/* v0.6 Item 6: context-aware action cluster in the title bar. Shows the
+   button group matching the currently-active tab; hidden otherwise. */
+#topBar .tabActions{display:none;gap:6px;align-items:center;margin-right:10px}
+#topBar .tabActions.active{display:flex}
+#topBar .tabActions button{font:600 11px var(--mono);padding:5px 10px}
+#topBar .tabActions input[type="text"]{font:11px var(--mono);padding:4px 8px;width:180px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:3px}
+#topBar .tabActions .btnDanger{background:#622;color:var(--red);border:1px solid var(--red)}
+
+#contentArea{height:calc(100vh - 44px);overflow:hidden;position:relative}
+.tabPane{display:none;height:100%;overflow:hidden}
+.tabPane.active{display:flex;flex-direction:column}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:6px;font:13px var(--mono);z-index:9999;animation:fadeUp .3s}
+.toast.ok{background:#284;color:#cfc}.toast.err{background:#622;color:#fcc}
+@keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes pulse{50%{opacity:.4}}
+
+/* ============ INBOX ============ */
+#inboxPane{flex-direction:row !important}
+#inboxLeft{flex:1;display:flex;flex-direction:column;min-width:0}
+#inboxViewer{flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center}
+#inboxViewer img{max-width:100%;max-height:100%;object-fit:contain}
+#inboxViewer .noMedia{color:var(--text2);font:13px var(--mono);text-align:center;padding:40px}
+#inboxNav{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border)}
+#inboxNav select{flex:1;max-width:280px}
+#inboxNav .prog{font:11px var(--mono);color:var(--text2)}
+#inboxAiBar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border-top:1px solid var(--border)}
+.aiDot{width:10px;height:10px;border-radius:50%;background:var(--text2)}
+.aiDot.run{background:orange;animation:pulse 1s infinite}
+.aiDot.ok{background:var(--green)}
+.aiDot.err{background:var(--red)}
+/* v0.6 Item 8d follow-up C1: collapsed the earlier dual-scroll design back
+   to a SINGLE scrollbar. #inboxRight owns the only overflow:auto; pillWall
+   and inboxForm just sit inside it in normal flow. Previous attempt used
+   two independent scroll regions (one for pills, one for the form) to
+   solve the "sticky pill wall overlapping form content" bug, but Mike saw
+   both scrollbars at once and asked "Dbl scroller?". Single scroll is the
+   simpler model — pill wall is the first thing in the panel, scrolls away
+   as the form comes in, same as any other long form. */
+#inboxRight{width:420px;display:flex;flex-direction:column;overflow-y:auto;background:var(--bg2);border-left:1px solid var(--border);padding:12px}
+#inboxForm{flex:0 0 auto;min-height:0}
+.fieldGroup{margin-bottom:12px}
+.fieldGroup label{display:block;font:600 11px var(--mono);color:var(--gold);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.fieldGroup input,.fieldGroup textarea,.fieldGroup select{width:100%}
+.fieldGroup textarea{min-height:60px}
+.fieldGroup.row{display:flex;gap:8px}
+.fieldGroup.row > div{flex:1}
+.fieldGroup.warn label{color:var(--red)}
+.fieldGroup.warn input,.fieldGroup.warn textarea,.fieldGroup.warn select{border-color:var(--red);box-shadow:0 0 0 1px rgba(204,68,68,.25)}
+.sectionHead{font:600 11px var(--mono);color:var(--gold);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);padding-bottom:4px;margin:16px 0 8px}
+.radioRow{display:flex;gap:4px;flex-wrap:wrap}
+.radioRow label{display:inline-flex;align-items:center;gap:3px;font:11px var(--mono);color:var(--text2);padding:2px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;cursor:pointer}
+.radioRow input[type=radio]{margin:0}
+.radioRow input[type=radio]:checked + span{color:var(--gold)}
+.radioRow label:has(input:checked){border-color:var(--gold);color:var(--gold)}
+
+/* v0.6 Item 7: inbox decision buttons relocated to the title bar (right side);
+   converted to outline style so they read as buttons, not as status chips. */
+.btnScrap,.btnKeep,.btnRelease{background:transparent;font-weight:600;border-radius:4px;font-family:var(--mono);letter-spacing:.3px}
+.btnScrap {color:var(--red);border:1px solid var(--red)}
+.btnScrap:hover {background:rgba(204,68,68,.14);border-color:#e55}
+.btnKeep  {color:var(--gold);border:1px solid var(--gold)}
+.btnKeep:hover  {background:rgba(201,168,76,.14);border-color:var(--gold2)}
+.btnRelease {color:var(--green);border:1px solid var(--green)}
+.btnRelease:hover {background:rgba(68,170,68,.14);border-color:#6c6}
+.btnNav{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+
+/* ============ TAG PICKER ============ */
+.tagPicker{margin-top:4px}
+.tagPicker .appliedPills{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;min-height:22px;padding:4px;background:var(--bg3);border:1px solid var(--border);border-radius:3px}
+.tagPicker .appliedPills:empty::before{content:'(no tags)';color:var(--text2);font:11px var(--mono);font-style:italic;padding:2px 4px}
+.tagPill{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;font:11px var(--mono);background:var(--gold);color:#111;border-radius:3px;cursor:default}
+.tagPill.proposed{background:transparent;color:var(--gold);border:1px dashed var(--gold);font-style:italic}
+.tagPill .x{cursor:pointer;font-weight:600;margin-left:2px;opacity:.8}
+.tagPill .x:hover{opacity:1;color:var(--red)}
+.tagInput{position:relative}
+.tagInput input{width:100%}
+.tagSuggest{position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:var(--bg2);border:1px solid var(--gold);border-radius:3px;z-index:50;display:none}
+.tagSuggest.open{display:block}
+.tagSuggest .sg{padding:4px 8px;font:11px var(--mono);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.tagSuggest .sg:hover,.tagSuggest .sg.hl{background:var(--bg3);color:var(--gold)}
+.tagSuggest .sg .cnt{color:var(--text2);font-size:10px}
+.tagSuggest .sg.propose{color:var(--gold);font-style:italic}
+.tagBrowse{margin-top:6px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:3px;padding:4px;background:var(--bg)}
+.tagGroup{margin-bottom:8px}
+.tagGroup .gLabel{font:600 10px var(--mono);color:var(--gold2);text-transform:uppercase;margin-bottom:3px;letter-spacing:.5px}
+.tagGroup .gTags{display:flex;flex-wrap:wrap;gap:3px}
+.tagChip{padding:2px 6px;font:11px var(--mono);background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:3px;cursor:pointer;user-select:none}
+.tagChip:hover{color:var(--text);border-color:var(--text2)}
+.tagChip.on{background:var(--gold);color:#111;border-color:var(--gold)}
+.tagChip.proposed{border-style:dashed;font-style:italic}
+.tagChip .cnt{opacity:.6;margin-left:3px;font-size:9px}
+
+/* ============ v0.5 PILL WALL ============ */
+.pillWall{margin-top:4px}
+/* v0.6 Item 8d follow-up C1-round2: pill wall and pillAddWrap live in normal
+   flow. No borders — earlier revision added border-bottom to separate them
+   from the form below, but Mike read those lines as "bars" and wanted them
+   gone. Vertical spacing alone (margin-bottom:6px on pillAddWrap) is enough
+   of a break for the single-scroll panel. */
+#inboxRight > .pillWall{
+  flex-shrink:0;
+  background:var(--bg2);
+  padding-bottom:4px;
+}
+#inboxRight > .pillAddWrap{
+  flex-shrink:0;
+  background:var(--bg2);
+  margin-bottom:6px;
+}
+.pillCategory{margin-bottom:10px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);overflow:hidden}
+/* v0.6 Item 7: category title left-justified, chevron then label, 0/N pinned
+   to the right via margin-left:auto (explicit, independent of flex justify). */
+.pillCategory > summary{cursor:pointer;font:600 11px var(--mono);color:var(--gold);padding:6px 8px;letter-spacing:.5px;text-transform:uppercase;user-select:none;list-style:none;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;justify-content:flex-start;align-items:center;gap:6px}
+.pillCategory > summary .summaryCount{margin-left:auto}
+.pillCategory > summary::-webkit-details-marker{display:none}
+.pillCategory > summary::before{content:'▸';margin-right:6px;color:var(--gold2);transition:transform .1s}
+.pillCategory[open] > summary::before{transform:rotate(90deg);display:inline-block}
+.pillCategory .summaryCount{font:10px var(--mono);color:var(--text2);font-weight:400}
+.pillCategory .catWarn{color:var(--red);margin-left:6px;font-size:10px}
+.pillCategory .pills{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px}
+.pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;font:11px var(--mono);border-radius:3px;cursor:pointer;user-select:none;border:1px solid transparent;white-space:nowrap}
+.pill .cnt{opacity:.55;margin-left:3px;font-size:9px}
+.pill.on-conf{background:var(--gold);color:#111;border-color:var(--gold)}
+.pill.on-unc{background:var(--gold);color:#111;border:1px dashed #000}
+.pill.off-sus{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+.pill.off-may{background:transparent;color:var(--text2);border:1px dashed var(--border);opacity:.65}
+.pill.warn{background:transparent;color:var(--red);border:1px solid var(--red);animation:warn-pulse 1.5s infinite;cursor:default}
+.pill.proposed{font-style:italic}
+.pill:hover:not(.warn){outline:1px solid var(--gold2)}
+@keyframes warn-pulse{50%{opacity:.5}}
+.pillAddWrap{display:flex;gap:6px;margin-top:6px;padding:4px 0}
+#pillAdd{flex:1;font-family:var(--mono)}
+.pillSuggest{position:absolute;max-height:200px;overflow-y:auto;background:var(--bg2);border:1px solid var(--gold);border-radius:3px;z-index:60;display:none;min-width:260px}
+.pillSuggest.open{display:block}
+.pillSuggest .sg{padding:4px 8px;font:11px var(--mono);cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.pillSuggest .sg:hover,.pillSuggest .sg.hl{background:var(--bg3);color:var(--gold)}
+.pillSuggest .sg.propose{color:var(--gold);font-style:italic}
+.pillSuggest .sg .cnt{color:var(--text2);font-size:10px}
+
+/* ============ v0.5 ATTACH MODAL ============ */
+.attachCandidates{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:3px;margin-top:6px;background:var(--bg3)}
+.attachCand{display:flex;gap:8px;padding:6px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center}
+.attachCand:hover{background:var(--bg4)}
+.attachCand img{width:48px;height:48px;object-fit:cover;background:var(--bg);border-radius:2px;flex-shrink:0}
+.attachCand .ci{flex:1;min-width:0}
+.attachCand .cid{font:600 11px var(--mono);color:var(--gold)}
+.attachCand .csh{font:12px var(--sans);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attachCand .cm{font:10px var(--mono);color:var(--text2)}
+
+.bulkList{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:3px;padding:6px;background:var(--bg3);margin-top:6px}
+.bulkList label{display:block;font:12px var(--mono);padding:2px 0;cursor:pointer}
+.bulkList label:hover{color:var(--gold)}
+
+/* ============ VAULT ============ */
+/* v0.6 Item 8: #vaultToolbar and #vaultTagBar were removed per Mike. Search +
+   view toggle live in #topBar .tabActions[data-for="vault"]; their styles are
+   shared with the Tag Manager actions cluster. The GRID/TABLE buttons and the
+   count badge now inherit from #topBar .tabActions. */
+#vaultPane{flex-direction:column !important}
+#topBar .tabActions .vbtn{padding:4px 10px;font-size:11px;background:var(--bg3);color:var(--text);border:1px solid var(--border);font-family:var(--mono);border-radius:3px;cursor:pointer}
+#topBar .tabActions .vbtn.active{background:var(--gold);color:#111;border-color:var(--gold)}
+#topBar .tabActions .cnt{font:11px var(--mono);color:var(--text2);margin-left:6px}
+
+#vaultBody{flex:1;display:flex;overflow:hidden;position:relative}
+#vaultContent{flex:1;overflow:auto;position:relative}
+
+/* Grid view */
+/* v0.6 Item 8b: grid cards slimmed to thumbnail + short desc + source badge
+   per Mike. Removed: ID label, long desc line, date line, primary tag pill.
+   Source badge sits at the bottom of the info strip as a small monogram
+   (FB / IG / YT / RN / etc.) so the card tells the user where it came from
+   at a glance without taking up a whole metadata row. */
+#vaultGrid{padding:12px;display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start}
+.vCard{width:240px;background:var(--bg3);border-radius:6px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:border-color .15s;position:relative;display:flex;flex-direction:column}
+.vCard:hover{border-color:var(--gold2)}
+.vCard.selected{border-color:var(--gold)}
+.vCard .thumbWrap{width:100%;height:150px;background:var(--bg);position:relative;overflow:hidden}
+.vCard .thumbWrap img{width:100%;height:100%;object-fit:cover;display:block}
+.vCard .thumbWrap .noThumb{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font:11px var(--mono);color:var(--text2);text-align:center;padding:10px}
+/* v0.6 Item 8b: HTML/webpage artifacts get a clean "webpage" placeholder
+   (globe glyph + URL host) instead of the old live-embedded HTML render. */
+.vCard .thumbWrap .webThumb{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;background:linear-gradient(180deg,#1a1d22 0%,#0f1115 100%);color:var(--text2);text-align:center;padding:10px;gap:6px}
+.vCard .thumbWrap .webThumb .globe{font-size:34px;color:var(--blue);line-height:1}
+.vCard .thumbWrap .webThumb .host{font:600 11px var(--mono);color:var(--text);word-break:break-all;line-height:1.3;max-width:90%}
+.vCard .thumbWrap .webThumb .tag{font:9px var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.vCard .badges{position:absolute;top:4px;right:4px;display:flex;gap:2px}
+.vCard .badge{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;background:rgba(0,0,0,.7);border-radius:3px;color:var(--gold)}
+.vCard .info{padding:8px 10px;font-size:12px;flex:1;display:flex;flex-direction:column;gap:6px}
+.vCard .info .vshort{color:var(--text);font-size:12px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px}
+.vCard .info .src{display:inline-flex;align-items:center;gap:4px;font:600 10px var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.5px;align-self:flex-start;padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg)}
+.vCard .info .src.facebook   {color:#4c7cf3;border-color:#4c7cf3}
+.vCard .info .src.instagram  {color:#e06a8a;border-color:#e06a8a}
+.vCard .info .src.youtube    {color:#e04444;border-color:#e04444}
+.vCard .info .src.tiktok     {color:#e0e0e0;border-color:#e0e0e0}
+.vCard .info .src.reverbnation{color:#c9a84c;border-color:#c9a84c}
+.vCard .info .src.fan        {color:#c9a84c;border-color:#c9a84c}
+.vCard .info .src.local      {color:var(--text2)}
+
+/* Table view */
+/* v0.6 Item 8: table-layout fixed + colgroup so headers/cells align under
+   sticky scroll, and so column widths are predictable for drag-resize. */
+#vaultTable{padding:0;display:none}
+#vaultTable table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+#vaultTable col.cvDate    {width:96px}
+#vaultTable col.cvPlatform{width:110px}
+#vaultTable col.cvShort   {width:auto}
+#vaultTable col.cvStatus  {width:90px}
+#vaultTable col.cvStorage {width:100px}
+#vaultTable th{position:sticky;top:0;background:var(--bg2);padding:8px 10px;text-align:left;font:600 11px var(--mono);color:var(--gold);cursor:pointer;user-select:none;z-index:2;box-shadow:inset 0 -2px 0 var(--border);position:relative}
+#vaultTable th:hover{background:var(--bg3)}
+#vaultTable th .arr{color:var(--gold);margin-left:4px}
+#vaultTable th .colGrip{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:3}
+#vaultTable th .colGrip:hover{background:var(--gold);opacity:.4}
+#vaultTable td{padding:5px 10px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#vaultTable tr{cursor:pointer}
+#vaultTable tr:hover{background:var(--bg2)}
+#vaultTable tr.selected{background:var(--bg3)}
+#vaultTable tr.selected td{color:var(--gold)}
+/* v0.6 Item 8: status column muted by default, green only for released
+   (matches the muted/green storage style Mike asked for). pillBadge no
+   longer carries a fill background for any state — color only, like the
+   storage column. Released gets green text + a thin green border so it
+   reads as the "active/done" state without shouting. Storage column has
+   highlighting fully removed (text2 muted) per Mike. */
+.pillBadge{display:inline-block;padding:0 2px;font:10px var(--mono);border-radius:2px;background:transparent;color:var(--text2)}
+.pillBadge.vault{color:var(--text2)}
+.pillBadge.inbox{color:var(--text2)}
+.pillBadge.released{color:var(--green);border:1px solid var(--green);padding:0 5px}
+.pillBadge.archived{color:var(--text2)}
+.pillBadge.vaulted{color:var(--text2)}
+.pillBadge.referenced{color:var(--text2)}
+.pillBadge.url_only{color:var(--text2)}
+
+/* Detail panel */
+/* v0.6 Item 8b: default width dropped from 400 to 320 and the panel is now
+   user-resizable via a grip on its left edge (see #vaultDetailGrip). The
+   panel is a flex child, so we set flex:0 0 <px> at runtime rather than
+   width. A min-width of 220 prevents the grip from closing the panel. */
+/* v0.6 Item 8d #2: panel + grip are always rendered at their resting width.
+   The empty-state placeholder (rendered by renderDetail when no selection)
+   replaces the previous display:none / .open-class toggle. */
+#vaultDetail{flex:0 0 320px;min-width:220px;overflow-y:auto;background:var(--bg2);border-left:1px solid var(--border);padding:12px;word-break:break-word;position:relative}
+#vaultDetailGrip{width:6px;cursor:col-resize;background:transparent;flex:0 0 6px;margin:0;border-left:1px solid var(--border);border-right:1px solid var(--border);position:relative;z-index:4}
+#vaultDetail .dEmpty{color:var(--text2);font:13px var(--sans);text-align:center;padding:40px 12px;font-style:italic}
+#vaultDetailGrip:hover{background:rgba(201,168,76,.25)}
+#vaultDetailGrip.dragging{background:rgba(201,168,76,.45)}
+#vaultDetail .dSection{margin-bottom:14px}
+#vaultDetail .dSection h4{font:600 11px var(--mono);color:var(--gold);text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px;letter-spacing:.5px}
+#vaultDetail .dField{margin-bottom:8px}
+#vaultDetail .dField label{font:10px var(--mono);color:var(--text2);display:block;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+#vaultDetail .dField .dVal{font:13px var(--sans);color:var(--text);padding:3px 6px;border-radius:3px;min-height:20px;word-break:break-word;white-space:pre-wrap;background:var(--bg3)}
+#vaultDetail .dField .dVal:empty{color:var(--text2);font-style:italic}
+#vaultDetail .dField .dVal:empty::before{content:'—'}
+#vaultDetail .dField .dVal.clickable{cursor:pointer}
+#vaultDetail .dField .dVal.clickable:hover{outline:1px solid var(--gold)}
+#vaultDetail .dField input,#vaultDetail .dField textarea,#vaultDetail .dField select{width:100%;display:none}
+#vaultDetail .dField.editing input,#vaultDetail .dField.editing textarea,#vaultDetail .dField.editing select{display:block}
+#vaultDetail .dField.editing .dVal{display:none}
+#vaultDetail .dHeroImg{width:100%;max-height:260px;object-fit:contain;background:var(--bg);border-radius:4px;margin-bottom:10px;display:block}
+#vaultDetail .dChildren{display:flex;flex-wrap:wrap;gap:6px}
+#vaultDetail .dChild{width:80px;background:var(--bg3);border-radius:3px;overflow:hidden;cursor:pointer;border:1px solid var(--border)}
+#vaultDetail .dChild:hover{border-color:var(--gold)}
+#vaultDetail .dChild img{width:100%;height:60px;object-fit:cover;display:block}
+#vaultDetail .dChild .cid{font:9px var(--mono);color:var(--text2);padding:2px 4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dActions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+/* v0.6 Item 8b: action cluster reshape per Mike.
+   SCRAP   = red      (permanent delete, hard-confirm modal)
+   DEMOTE  = gold     (send back to Inbox for another pass)
+   RELEASE = green    (STATE button — pressed/filled when released, unpressed
+                       outline otherwise; single click toggles)
+   ARCHIVE = gray     (neutral text2; hides from default views)
+   The outline-only style (transparent fill, colored border) matches the
+   Inbox commit cluster exactly. */
+.dActions button{font-size:11px;padding:6px 10px;font-family:var(--mono);font-weight:600;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;letter-spacing:.3px}
+.dActions button:hover{background:rgba(255,255,255,.04);border-color:var(--text2)}
+.dActions .btnScrap  {color:var(--red);border-color:var(--red)}
+.dActions .btnScrap:hover  {background:rgba(204,68,68,.14);border-color:#e55}
+.dActions .btnDemote {color:var(--gold);border-color:var(--gold)}
+.dActions .btnDemote:hover {background:rgba(201,168,76,.14);border-color:var(--gold2)}
+.dActions .btnArchive{color:var(--text2);border-color:var(--border)}
+.dActions .btnArchive:hover{background:rgba(255,255,255,.04);color:var(--text);border-color:var(--text2)}
+/* State toggle: green outline when not released, green fill when released. */
+/* v0.6 Item 8c: much stronger RELEASE state visual. The un-released variant
+   now reads as a muted grey "NOT RELEASED" outlined button (obviously
+   clickable-toggle, not a verb command), and the released variant is a
+   loud filled-green chip with a ring to shout the state. */
+.dActions .btnRelease       {color:var(--text2);border-color:var(--border);background:transparent}
+.dActions .btnRelease:hover {background:rgba(68,170,68,.10);color:var(--green);border-color:var(--green)}
+.dActions .btnRelease.on    {background:var(--green);color:#081a08;border-color:var(--green);box-shadow:0 0 0 2px rgba(68,170,68,.25)}
+.dActions .btnRelease.on:hover{background:#6c6;border-color:#6c6}
+
+/* v0.6 Item 8c C1: action cluster lives at the top of the side panel (was
+   below the Description section). Flat border along the bottom visually
+   anchors it to the panel header. */
+/* v0.6 Item 8d #3: the four action buttons (SCRAP/DEMOTE/RELEASE/ARCHIVE)
+   moved out of the side panel into #topBar .tabActions[data-for="vault"].
+   The wrapping .dActions span still gives them flex/gap layout, but we need
+   to zero the 10px top margin that was meant for in-panel stacking. */
+#topBar #vaultArtifactActions{display:inline-flex;align-items:center}
+#topBar #vaultArtifactActions:empty{display:none}
+#topBar #vaultArtifactActions .dActions{margin-top:0;margin-left:6px}
+#vaultDetail .dUrlTop h4{margin-top:0}
+
+/* v0.6 Item 8d #4: side-panel tag pills are click-to-toggle. A click fires
+   /api/artifact-update immediately (no pending state), but the pill stays
+   in the panel with a dim/strikethrough ".unselected" look so you can see
+   what you just removed. Clicking again re-adds the tag (toggle). The
+   unselected pills only disappear on the next fresh render — navigate
+   to another artifact and back, or switch tabs. */
+.dTagList{display:flex;flex-wrap:wrap;gap:3px}
+.dTagList .tagPill{font-size:10px}
+#vaultDetail .dTagList .tagPill{cursor:pointer;transition:opacity .1s, filter .1s}
+#vaultDetail .dTagList .tagPill:hover{filter:brightness(1.15)}
+#vaultDetail .dTagList .tagPill.unselected{background:var(--bg3);color:var(--text2);border:1px dashed var(--text2);text-decoration:line-through;opacity:.55}
+#vaultDetail .dTagList .tagPill.unselected:hover{opacity:.85;filter:none}
+
+/* ============ VOCAB ADMIN ============ */
+#vocabPane{flex-direction:column !important}
+/* v0.6 Item 6: no local toolbar — all actions (search, + NEW TAG, ⇔ MERGE,
+   × DELETE SELECTED) live in the title bar so the table gets every pixel. */
+#vocabBody{flex:1;overflow:auto;position:relative;padding:0}
+/* v0.6 Item 6 follow-up: table-layout:fixed so column widths (set via the
+   <colgroup>) are authoritative and drag-resize actually moves boundaries. */
+#vocabTable{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;background:var(--bg2);table-layout:fixed}
+#vocabTable col.cUsage{width:60px}
+#vocabTable col.cCategory{width:120px}
+#vocabTable col.cDisplay{width:auto}        /* flex to fill */
+#vocabTable col.cStatus{width:90px}
+#vocabTable col.cActions{width:170px}
+#vocabTable col.cSlug{width:200px}
+/* v0.6 Item 6: Sticky header robustness. The scroll container is #vocabBody;
+   thead TH sticks to its top=0. box-shadow (not border-bottom) for the rule
+   line because borders on sticky TH drop during scroll in Chrome. */
+#vocabTable thead th{
+  position:sticky;top:0;z-index:10;
+  padding:6px 8px;text-align:left;font:600 11px var(--mono);color:var(--gold);
+  background:var(--bg2);box-shadow:inset 0 -2px 0 var(--border);
+  user-select:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#vocabTable thead th.sortable{cursor:pointer}
+#vocabTable thead th.sortable:hover{background:var(--bg3)}
+#vocabTable thead th .sortInd{display:inline-block;margin-left:4px;width:10px;color:var(--text2);font-weight:400}
+#vocabTable thead th.sort-active .sortInd{color:var(--gold);font-weight:700}
+/* v0.6 Item 6 follow-up: drag-to-resize grip at the right edge of each TH. */
+#vocabTable thead th .colGrip{position:absolute;top:0;right:0;bottom:0;width:6px;cursor:col-resize;user-select:none;z-index:2}
+#vocabTable thead th .colGrip:hover{background:var(--gold);opacity:.5}
+#vocabTable td{padding:4px 8px;border-bottom:1px solid var(--border);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#vocabTable tbody tr:hover{background:var(--bg3)}
+/* v0.6 Item 6: slug column de-emphasized and pushed to the far right. */
+#vocabTable th.slugCol,#vocabTable td.slugCol{color:var(--text2);text-align:right;padding-right:14px;font:10px var(--mono);white-space:nowrap}
+#vocabTable td.slugCol code{color:var(--text2);opacity:.7}
+#vocabTable .tagActions{display:flex;gap:3px;flex-wrap:wrap}
+#vocabTable .tagActions button{font-size:10px;padding:3px 6px;font-family:var(--mono)}
+#vocabTable .btnAccept{background:var(--green);color:#111;font-weight:600}
+#vocabTable .btnReject{background:#622;color:var(--red);border:1px solid var(--red)}
+#vocabTable .propFlag{color:var(--gold);font-style:italic}
+
+/* ============ MODAL ============ */
+.modalBg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:800;align-items:center;justify-content:center}
+.modalBg.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--gold);border-radius:6px;padding:18px;min-width:380px;max-width:520px}
+.modal h3{font:600 14px var(--mono);color:var(--gold);margin-bottom:12px;text-transform:uppercase}
+.modal .row{margin-bottom:10px}
+.modal .row label{display:block;font:10px var(--mono);color:var(--text2);text-transform:uppercase;margin-bottom:3px}
+/* v0.6 Item 6: scope full-width to text-like inputs so checkboxes render at
+   their natural size (prev rule made checkboxes stretch the modal width). */
+.modal .row input[type="text"],.modal .row input:not([type]),.modal .row input[type="search"],.modal .row select,.modal .row textarea{width:100%}
+/* v0.6 Item 6: left-aligned single-row checkbox rows — "[checkbox] label" with
+   vertical centering. Used in Create Pill / Edit Pill dialogs. */
+.modal .checkRow{display:flex;align-items:center;gap:8px;margin-bottom:10px;font:10px var(--mono);color:var(--text2);text-transform:uppercase;cursor:pointer;user-select:none}
+.modal .checkRow input[type="checkbox"]{width:auto;margin:0;flex:0 0 auto;cursor:pointer}
+.modal .checkRow span{flex:1}
+.modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.modal .actions button{padding:7px 14px;font-family:var(--mono);font-weight:600}
+.modal .btnPrimary{background:var(--gold);color:#111}
+.modal .btnDanger{background:#622;color:var(--red);border:1px solid var(--red)}
+
+</style>
+</head>
+<body>
+
+<div id="topBar">
+  <span class="logo">MEDIAVAULT</span>
+  <button class="tab-btn active" data-tab="inbox" onclick="switchTab('inbox')">INBOX</button>
+  <button class="tab-btn" data-tab="vault" onclick="switchTab('vault')">THE VAULT</button>
+  <button class="tab-btn" data-tab="vocab" onclick="switchTab('vocab')">TAG MANAGER</button>
+  <span class="spacer"></span>
+  <!-- v0.6 Item 6: Tag Manager actions — visible only when the vocab tab is
+       active (toggled from switchTab). DELETE SELECTED / checkboxes removed
+       per Mike — per-row DELETE is the only deletion path. -->
+  <div class="tabActions" data-for="vocab">
+    <input type="text" id="vocabSearch" placeholder="filter by slug..." oninput="vocabRender()">
+    <button onclick="openTagCreateModal()">+ NEW TAG</button>
+    <button onclick="openMergeModal()">&#8660; MERGE</button>
+  </div>
+  <!-- v0.6 Item 8: Vault controls — search + view toggle. Date/status/storage
+       filters, sort dropdown, and tag-pill row were all removed per Mike.
+       v0.6 Item 8d #3: selection-scoped action cluster (SCRAP/DEMOTE/
+       RELEASE/ARCHIVE) lives in #vaultArtifactActions; populated by
+       renderDetail when an artifact is selected, empty otherwise (and
+       hidden via the :empty rule so it collapses cleanly). -->
+  <div class="tabActions" data-for="vault">
+    <input type="text" id="vSearch" placeholder="search vault..." oninput="vaultRenderSoon()">
+    <button class="vbtn active" id="vBtnGrid" onclick="vaultSetView('grid')">GRID</button>
+    <button class="vbtn"        id="vBtnTable" onclick="vaultSetView('table')">TABLE</button>
+    <span class="cnt" id="vCount">0</span>
+    <span id="vaultArtifactActions"></span>
+  </div>
+  <!-- v0.6 Item 7: inbox decision cluster lives here (right side of title bar)
+       so the current artifact's commit button is always at the visual anchor
+       of the page rather than floating in the right column. -->
+  <div class="tabActions active" data-for="inbox">
+    <button class="btnScrap"   onclick="inboxScrap()">&#10007; SCRAP</button>
+    <button class="btnKeep"    onclick="inboxSave(false)">&#10003; SAVE TO VAULT</button>
+    <button class="btnRelease" onclick="inboxSave(true)">&#9733; RELEASE</button>
+  </div>
+  <!-- v0.6 item 5: alert badge only shows when server health checks fail. -->
+  <span id="srvAlert" class="alertBadge" title="Server unreachable" onclick="_srvHealthTick()"><span class="dot"></span>SERVER</span>
+</div>
+
+<div id="contentArea">
+
+<!-- ============ INBOX ============ -->
+<div id="inboxPane" class="tabPane active">
+  <div id="inboxLeft">
+    <div id="inboxNav">
+      <button class="btnNav" onclick="inboxPrev()">&larr; PREV</button>
+      <select id="inboxSelect" onchange="inboxSelectItem(this.value)"></select>
+      <button class="btnNav" onclick="inboxNext()">NEXT &rarr;</button>
+      <span class="prog" id="inboxProg">0 of 0</span>
+    </div>
+    <div id="inboxViewer">
+      <div class="noMedia">Select a queue item to review</div>
+    </div>
+    <div id="inboxAiBar">
+      <span class="aiDot" id="aiDot"></span>
+      <button onclick="enrichCurrent()">ENRICH WITH AI</button>
+      <span id="aiMsg" style="font:11px var(--mono);color:var(--text2)"></span>
+    </div>
+  </div>
+  <div id="inboxRight">
+    <!-- v0.6 Item 7: SCRAP / SAVE TO VAULT / RELEASE moved to the title bar.
+         The "Pills" sectionHead was removed — the category blocks below are
+         self-labelling. -->
+
+    <!-- v0.5: Pill wall (grouped by category, 5-state) -->
+    <!-- v0.6 Item 8d follow-up C3: pillAddWrap input removed. The pill wall
+         already shows every vocab tag grouped by category — clicking toggles
+         state. To create a new tag, use Tag Manager (top-level tab). This
+         matches the vault detail UX, which has no add-pill input either. -->
+    <div class="pillWall" id="pillWall"></div>
+
+    <!-- v0.6 Item 8d follow-up #10: everything below pillAddWrap is wrapped
+         in #inboxForm so the form fields have their own scroll region. This
+         replaces the old position:sticky approach. -->
+    <div id="inboxForm">
+    <!-- v0.6 Item 8c: Mike wants Descriptions expanded by default (and any
+         other collapsible sections in the flow). Keeping the <details> so the
+         ▾ toggle still works for users who want to fold it up, but it now
+         opens as soon as the inbox loads. -->
+    <details class="sectionDetails" id="descDetails" open>
+      <summary class="sectionHead" style="cursor:pointer;list-style:none">Descriptions ▾</summary>
+    <!-- v0.5: ID is auto-assigned on save; removed visible field. -->
+    <input type="hidden" id="fId">
+    <div class="fieldGroup">
+      <label>Short description</label>
+      <input type="text" id="fShortDesc" placeholder="one line">
+    </div>
+    <div class="fieldGroup">
+      <label>Long description</label>
+      <textarea id="fLongDesc" placeholder="2-4 sentences"></textarea>
+    </div>
+    <div class="fieldGroup">
+      <label>Extracted text</label>
+      <textarea id="fExtractedText" placeholder="text extracted from media"></textarea>
+    </div>
+    <div class="fieldGroup">
+      <label>Notes</label>
+      <textarea id="fNotes"></textarea>
+    </div>
+    <!-- v0.5: Author moved to author:<slug> pill (add it in Pills above). -->
+    <!-- v0.5: Parent artifact removed from inbox; attach via vault detail. -->
+    <!-- v0.5: Old fAuthor and fParentId inputs replaced by hidden inputs to keep JS happy. -->
+    <input type="hidden" id="fAuthor">
+    <input type="hidden" id="fParentId">
+
+    <div class="sectionHead">Source</div>
+    <div class="fieldGroup">
+      <label>Source URL</label>
+      <!-- v0.6 Item 8d follow-up: explicit OPEN button so a stray click on
+           the text input doesn't launch; user has to click the button. -->
+      <div style="display:flex;gap:6px;align-items:stretch">
+        <input type="text" id="fSourceUrl" placeholder="https://..." style="flex:1">
+        <button type="button" id="fSourceUrlOpen" onclick="openInboxSourceUrl()" title="Open URL in new tab" style="padding:0 10px;font:11px var(--mono);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">&#8599; Open</button>
+      </div>
+    </div>
+    <div class="fieldGroup">
+      <label>Source platform</label>
+      <input type="text" id="fSourcePlatform" list="platformOptions" placeholder="facebook, reverbnation, etc.">
+      <datalist id="platformOptions"></datalist>
+    </div>
+
+    <div class="sectionHead">Dates</div>
+    <div class="fieldGroup row">
+      <div>
+        <label>Post date</label>
+        <input type="date" id="fPostDate">
+      </div>
+      <div>
+        <label>Capture date</label>
+        <input type="date" id="fCaptureDate">
+      </div>
+    </div>
+    <div class="fieldGroup">
+      <label>Post date confidence</label>
+      <div class="radioRow" id="fConfidenceRow">
+        <label><input type="radio" name="confidence" value="extracted"><span>extracted</span></label>
+        <label><input type="radio" name="confidence" value="manual"><span>manual</span></label>
+        <label><input type="radio" name="confidence" value="estimated"><span>estimated</span></label>
+        <label><input type="radio" name="confidence" value="unknown" checked><span>unknown</span></label>
+      </div>
+    </div>
+
+    <div class="sectionHead">Storage</div>
+    <div class="fieldGroup row">
+      <div>
+        <label>Storage mode</label>
+        <select id="fStorageMode">
+          <option value="vaulted">vaulted</option>
+          <option value="referenced">referenced</option>
+          <option value="url_only">url only</option>
+        </select>
+      </div>
+      <div>
+        <label>Media type</label>
+        <input type="text" id="fMediaType" list="mediaTypeOptions" placeholder="photo, audio, ...">
+        <datalist id="mediaTypeOptions"></datalist>
+      </div>
+    </div>
+
+    </details><!-- /descDetails -->
+
+    <!-- v0.5: Tag picker removed; pill wall above replaces it. Legacy tag-browse hidden for compat. -->
+    <div class="tagPicker" id="tagPicker" style="display:none">
+      <div class="appliedPills" id="appliedPills"></div>
+      <div class="tagInput">
+        <input type="text" id="tagInputBox" autocomplete="off">
+        <div class="tagSuggest" id="tagSuggest"></div>
+      </div>
+      <div class="tagBrowse" id="tagBrowse"></div>
+    </div>
+    </div><!-- /inboxForm -->
+  </div>
+</div>
+
+<!-- ============ VAULT ============ -->
+<!-- v0.6 Item 8: vaultToolbar + vaultTagBar removed. Search + view toggle live
+     in #topBar .tabActions[data-for="vault"]. Date filters, status filter,
+     storage filter, sort dropdown, "Show children inline" checkbox, and the
+     tag-pill chip row were all dropped per Mike — search bar covers their use
+     cases and the per-column header click handles sort. -->
+<div id="vaultPane" class="tabPane">
+  <div id="vaultBody">
+    <div id="vaultContent">
+      <div id="vaultGrid"></div>
+      <div id="vaultTable">
+        <table>
+          <colgroup>
+            <col class="cvDate">
+            <col class="cvPlatform">
+            <col class="cvShort">
+            <col class="cvStatus">
+            <col class="cvStorage">
+          </colgroup>
+          <thead><tr>
+            <th data-sort="post_date">Date</th>
+            <th data-sort="source_platform">Platform</th>
+            <th data-sort="description_short">Short Description</th>
+            <th data-sort="status">Status</th>
+            <th data-sort="storage_mode">Storage</th>
+          </tr></thead>
+          <tbody id="vaultTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="vaultDetailGrip" title="Drag to resize"></div>
+    <div id="vaultDetail"></div>
+  </div>
+</div>
+
+<!-- ============ VOCAB ============ -->
+<div id="vocabPane" class="tabPane">
+  <!-- v0.6 Item 6: toolbar row removed; search / + NEW TAG / ⇔ MERGE /
+       × DELETE SELECTED now live in the title bar (see #topBar .tabActions). -->
+  <div id="vocabBody">
+    <!-- v0.6 Item 8d follow-up C4: Status column + ACCEPT/REJECT actions
+         removed. The "proposed" tag concept is dead — every tag is just a
+         tag now. Pill-add UI requires a category, so there's no path that
+         creates a proposed row anymore. -->
+    <table id="vocabTable">
+      <colgroup>
+        <col class="cUsage">
+        <col class="cCategory">
+        <col class="cDisplay">
+        <col class="cActions">
+        <col class="cSlug">
+      </colgroup>
+      <thead><tr>
+        <th class="sortable" data-sort="usage"        onclick="vocabSortClick('usage')">Usage<span class="sortInd"></span></th>
+        <th class="sortable" data-sort="category"     onclick="vocabSortClick('category')">Category<span class="sortInd"></span></th>
+        <th class="sortable" data-sort="display_name" onclick="vocabSortClick('display_name')">Display name<span class="sortInd"></span></th>
+        <th>Actions</th>
+        <th class="slugCol sortable" data-sort="slug" onclick="vocabSortClick('slug')">Slug<span class="sortInd"></span></th>
+      </tr></thead>
+      <tbody id="vocabBodyRows"></tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /contentArea -->
+
+<!-- Modals -->
+<div class="modalBg" id="modalBg">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- Renderer for non-image artifacts (DOM observer) -->
+<script src="/ext/hr_manager_renderer.js"></script>
+
+<script>
+// ==================== GLOBAL STATE ====================
+const API_BASE = '';
+let SQL = null;      // sql.js module
+let DB = null;       // loaded db
+let QUEUE = [];      // inbox queue rows
+let ARTIFACTS = [];  // full artifact list
+let TAGS_BY_SLUG = {}; // tag vocab map
+let TAG_LIST = [];   // tag vocab list (ordered)
+let INBOX_IDX = -1;  // currently-selected queue idx
+let CURRENT_ARTIFACT_ID = null;  // currently-selected in vault
+let EDITING_ID = null; // artifact id being edited in vault (separate from viewing)
+let FILTER_TAG_STATE = {}; // slug -> 'must' | 'mustnot' | undefined
+let VAULT_VIEW = 'grid';
+let VAULT_SORT_COL = 'post_date';
+let VAULT_SORT_DIR = 'desc';
+// v0.6 Item 8: list of currently-visible artifact IDs (after filter + sort),
+// in render order. Populated by vaultRender. Used by the arrow-key nav to
+// step through the currently-visible rows.
+let VAULT_VISIBLE_IDS = [];
+// v0.6 sort state for the Tag Manager. null/null = default (category ASC,
+// then display_name ASC). Click cycles ASC -> DESC -> back to default.
+let VOCAB_SORT_COL = null;
+let VOCAB_SORT_DIR = null;
+let CURRENT_APPLIED_TAGS = []; // tag slugs applied to current inbox item (derived from CURRENT_PILL_STATES)
+// v0.5 — pill state model. slug -> 'on_confident' | 'on_uncertain' | 'off_suspected' | 'off_maybe'
+let CURRENT_PILL_STATES = {};
+let CURRENT_WARNINGS = []; // warning slugs from attention rules
+
+// v0.5 categories (mirror core/attention_rules.py constants).
+// v0.6 Item 8c: 'scope' category removed per Mike — he prefers to use plain
+// topical tags for scope information. Existing scope:* tags continue to work
+// (they just render in the 'topic' category via the fallback); no data
+// migration needed.
+const CATEGORY_ORDER = ['people', 'bands', 'places', 'content_kind', 'topic', 'platform', 'rarity'];
+const SOCIAL_PLATFORMS = new Set(['facebook','instagram','tiktok','reverbnation']);
+const TITLECASE_BIGRAM = /\b[A-Z][a-z]+ [A-Z][a-z]+\b/;
+
+// ==================== UTILITIES ====================
+function toast(msg, kind='ok'){
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
+function fmtDate(d){ if(!d) return ''; return String(d).slice(0,10); }
+function titleCase(s){ return s.split(/[_\s]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '); }
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function parseTagsJson(s){
+  if(!s) return [];
+  try{ const a = JSON.parse(s); return Array.isArray(a) ? a : []; }catch(e){ return []; }
+}
+function slugify(s){
+  // v0.5: allow optional namespace prefix `<ns>:<slug>` (e.g. author:carsie_blanton)
+  if(s===null||s===undefined) return '';
+  let str = String(s).trim().toLowerCase();
+  if(!str) return '';
+  let prefix = '';
+  if(str.includes(':')){
+    const idx = str.indexOf(':');
+    let head = str.slice(0,idx).replace(/[-\s]+/g,'_').replace(/[^a-z0-9_]/g,'').replace(/_+/g,'_').replace(/^_|_$/g,'');
+    if(head){ prefix = head + ':'; str = str.slice(idx+1); }
+    else { str = str.slice(idx+1); }
+  }
+  let body = str.replace(/[-\/\\\s]+/g,'_').replace(/[^a-z0-9_]/g,'').replace(/_+/g,'_').replace(/^_|_$/g,'');
+  if(!body) return '';
+  const full = prefix + body;
+  if(full.length > 64) return '';
+  return full;
+}
+async function api(path, body){
+  const opts = {method: body ? 'POST' : 'GET', headers:{'Content-Type':'application/json'}};
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch(API_BASE + path, opts);
+  if(!r.ok){ const t = await r.text(); throw new Error(`${path} ${r.status}: ${t.slice(0,200)}`); }
+  return r.json();
+}
+
+// ==================== TAB SWITCHING ====================
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab===name);
+  });
+  document.querySelectorAll('.tabPane').forEach(p=>p.classList.remove('active'));
+  const pane = document.getElementById(name+'Pane');
+  if(pane) pane.classList.add('active');
+  // v0.6 Item 6: toggle the title-bar action cluster for the active tab.
+  document.querySelectorAll('#topBar .tabActions').forEach(el => {
+    el.classList.toggle('active', el.dataset.for === name);
+  });
+  if(name==='vault'){
+    vaultRender();
+    // v0.6 Item 8d follow-up #8: if the user lands on the Vault tab with no
+    // artifact selected (fresh load) or a stale selection that's been filtered
+    // out, auto-pick the first visible row. Without this the tab opens with
+    // the "Select an artifact..." empty-state placeholder on every refresh,
+    // which felt broken.
+    if(!CURRENT_ARTIFACT_ID || !VAULT_VISIBLE_IDS.includes(CURRENT_ARTIFACT_ID)){
+      if(VAULT_VISIBLE_IDS.length){
+        CURRENT_ARTIFACT_ID = VAULT_VISIBLE_IDS[0];
+        renderDetail(CURRENT_ARTIFACT_ID);
+      }
+    }
+  }
+  if(name==='vocab'){ vocabRender(); }
+  if(name==='inbox' && INBOX_IDX<0 && QUEUE.length){ inboxSelectItem(QUEUE[0].queue_id); }
+}
+
+// ==================== DATA LOAD ====================
+async function loadDb(){
+  const buf = await fetch('/db?_=' + Date.now()).then(r=>r.arrayBuffer());
+  DB = new SQL.Database(new Uint8Array(buf));
+  refreshArtifactsFromDb();
+}
+function refreshArtifactsFromDb(){
+  ARTIFACTS = [];
+  try{
+    const res = DB.exec(`SELECT * FROM artifacts ORDER BY post_date DESC, id ASC`);
+    if(!res.length){ return; }
+    const cols = res[0].columns;
+    ARTIFACTS = res[0].values.map(row => {
+      const o = {};
+      cols.forEach((c,i)=> o[c] = row[i]);
+      o._tags = parseTagsJson(o.tags);
+      return o;
+    });
+  }catch(e){ console.error('refresh artifacts', e); }
+}
+async function loadQueue(){
+  const r = await api('/api/queue');
+  // v0.6 Item 8c: bug fix — scrapped inbox items were re-appearing because
+  // /api/queue (no status filter) returns ALL queue rows (pending, enriched,
+  // approved, keep, skip, failed). inboxScrap sets status='skip' but the row
+  // must stay in the DB so the ingest scan won't re-queue the same file —
+  // so the fix is a client-side filter: only show 'pending' + 'enriched',
+  // the two in-flight inbox states.
+  const ACTIVE = new Set(['pending','enriched']);
+  QUEUE = (r.rows || []).filter(row => ACTIVE.has(row.status));
+  populateInboxSelect();
+  if(QUEUE.length && INBOX_IDX<0){ inboxSelectItem(QUEUE[0].queue_id); }
+  else if(!QUEUE.length){
+    INBOX_IDX = -1;
+    const prog = document.getElementById('inboxProg'); if(prog) prog.textContent = '0 of 0';
+    const viewer = document.getElementById('inboxViewer'); if(viewer) viewer.innerHTML = '<div class="noMedia">Queue empty</div>';
+    clearInboxRight();
+  }
+}
+async function loadTags(){
+  const r = await api('/api/tags');
+  TAG_LIST = r.rows || [];
+  TAGS_BY_SLUG = {};
+  TAG_LIST.forEach(t => TAGS_BY_SLUG[t.slug] = t);
+  renderTagBrowse();
+  // v0.6 Item 8: renderVaultTagBar() removed — the tag-pill filter row above
+  // the vault table was dropped per Mike. Search covers the same use cases.
+  populateMediaTypeOptions();
+  populatePlatformOptions();
+}
+function populateMediaTypeOptions(){
+  const dl = document.getElementById('mediaTypeOptions');
+  const set = new Set();
+  ARTIFACTS.forEach(a=>{ if(a.media_type) set.add(a.media_type); });
+  ['photo','audio','video','link','text','artwork','mixed','other'].forEach(v=>set.add(v));
+  dl.innerHTML = [...set].sort().map(v=>`<option value="${esc(v)}">`).join('');
+}
+function populatePlatformOptions(){
+  const dl = document.getElementById('platformOptions');
+  const set = new Set();
+  ARTIFACTS.forEach(a=>{ if(a.source_platform) set.add(a.source_platform); });
+  dl.innerHTML = [...set].sort().map(v=>`<option value="${esc(v)}">`).join('');
+}
+
+// ==================== INBOX ====================
+function populateInboxSelect(){
+  const sel = document.getElementById('inboxSelect');
+  sel.innerHTML = QUEUE.map(q => {
+    const label = (q.raw_path || q.source_url || 'queue-'+q.queue_id).split(/[\\\/]/).pop().slice(0,60);
+    return `<option value="${q.queue_id}">${esc(label)} [#${q.queue_id}]</option>`;
+  }).join('');
+}
+function inboxSelectItem(queueId){
+  queueId = parseInt(queueId,10);
+  INBOX_IDX = QUEUE.findIndex(q => q.queue_id===queueId);
+  if(INBOX_IDX<0) return;
+  const q = QUEUE[INBOX_IDX];
+  document.getElementById('inboxSelect').value = queueId;
+  document.getElementById('inboxProg').textContent = `${INBOX_IDX+1} of ${QUEUE.length}`;
+  renderInboxViewer(q);
+  populateInboxFields(q);
+}
+
+// v0.6 Item 8d follow-up: when the queue empties (last item scrapped,
+// saved, or released), the right-side panel used to keep showing the last
+// artifact's pills, form fields, and accumulated view. Wipe the whole
+// thing — no artifact selected means nothing to show.
+function clearInboxRight(){
+  CURRENT_PILL_STATES = {};
+  CURRENT_WARNINGS = [];
+  const pillWall = document.getElementById('pillWall');
+  if(pillWall) pillWall.innerHTML = '';
+  // Clear every form input under #inboxForm
+  const form = document.getElementById('inboxForm');
+  if(form){
+    form.querySelectorAll('input[type="text"], textarea, input[type="date"]').forEach(el => { el.value = ''; });
+    form.querySelectorAll('input[type="radio"]').forEach(el => { el.checked = false; });
+    const fId = document.getElementById('fId'); if(fId) fId.value = '';
+  }
+  // Drop field-warning glow
+  document.querySelectorAll('.fieldGroup.warn').forEach(el => { el.classList.remove('warn'); el.title = ''; });
+}
+function renderInboxViewer(q){
+  const v = document.getElementById('inboxViewer');
+  v.innerHTML = '';
+  if(q.raw_path){
+    // Let the renderer handle non-image assets via attribute upgrade
+    const img = document.createElement('img');
+    img.src = '/image-raw?path=' + encodeURIComponent(q.raw_path);
+    img.setAttribute('data-asset-path', q.raw_path);
+    img.onerror = function(){
+      // Fallback: mount via /asset-raw DOM that the renderer picks up
+      v.innerHTML = `<img src="/asset-raw?path=${encodeURIComponent(q.raw_path)}" data-asset-path="${esc(q.raw_path)}" style="max-width:100%;max-height:100%">`;
+    };
+    v.appendChild(img);
+  } else if(q.source_url){
+    v.innerHTML = `<div class="noMedia">URL only<br><a href="${esc(q.source_url)}" target="_blank" style="color:var(--gold)">${esc(q.source_url)}</a></div>`;
+  } else {
+    v.innerHTML = `<div class="noMedia">No media for queue item #${q.queue_id}</div>`;
+  }
+}
+function populateInboxFields(q){
+  // Try parse enrichment_json for pre-fill
+  let enr = {};
+  try{ enr = q.enrichment_json ? JSON.parse(q.enrichment_json) : {}; }catch(e){}
+  // v0.6 Item 8d follow-up: a re-queued item (ingest_source='requeue') has no
+  // enrichment_json — the content lives on the existing artifact row. Prefer
+  // that as the pre-fill source so the user doesn't re-enter the descriptions
+  // they already approved. For fresh queue items (no artifact_id), the
+  // artifact lookup returns undefined and we fall back to enrichment_json as
+  // before.
+  const art = q.artifact_id ? (ARTIFACTS || []).find(a => a.id === q.artifact_id) : null;
+  const pickArt = (k) => (art && art[k] != null && art[k] !== '') ? art[k] : undefined;
+  const enrOrArt = (k) => { const v = pickArt(k); return v !== undefined ? v : (enr[k] || ''); };
+  document.getElementById('fId').value = q.artifact_id || '';
+  document.getElementById('fShortDesc').value = enrOrArt('description_short');
+  document.getElementById('fLongDesc').value  = enrOrArt('description_long');
+  document.getElementById('fExtractedText').value = enrOrArt('extracted_text');
+  document.getElementById('fNotes').value = enrOrArt('notes');
+  document.getElementById('fSourceUrl').value = pickArt('source_url') || q.source_url || enr.source_url || '';
+  document.getElementById('fSourcePlatform').value = enrOrArt('source_platform');
+  document.getElementById('fPostDate').value = fmtDate(pickArt('post_date') || enr.post_date);
+  document.getElementById('fCaptureDate').value = fmtDate(pickArt('capture_date') || enr.capture_date);
+  const conf = pickArt('post_date_confidence') || enr.post_date_confidence || 'unknown';
+  document.querySelectorAll('#fConfidenceRow input[type=radio]').forEach(r=>{ r.checked = r.value===conf; });
+  document.getElementById('fStorageMode').value = pickArt('storage_mode') || enr.storage_mode || (q.raw_path ? 'vaulted' : (q.source_url ? 'url_only' : 'vaulted'));
+  document.getElementById('fMediaType').value = enrOrArt('media_type');
+
+  // v0.5: pill_states is the canonical shape. Backward-compat: tags / tags_known / tags_proposed.
+  // v0.6 Item 8d follow-up: for a re-queued artifact, seed the pill states
+  // from the artifact's persisted tags (all on_confident) so the user sees
+  // the tags they already curated instead of an empty pill wall.
+  CURRENT_PILL_STATES = {};
+  if(art && Array.isArray(art._tags)){
+    for(const slug of art._tags){
+      const s = slugify(slug);
+      if(s) CURRENT_PILL_STATES[s] = 'on_confident';
+    }
+  } else if(enr.pill_states && typeof enr.pill_states === 'object'){
+    for(const [slug, state] of Object.entries(enr.pill_states)){
+      if(!slug) continue;
+      const s = slugify(slug);
+      if(s) CURRENT_PILL_STATES[s] = state;
+    }
+  } else {
+    // v0.4 compat — known = on_confident, proposed = on_uncertain
+    if(Array.isArray(enr.tags)){
+      for(const slug of enr.tags){ const s = slugify(slug); if(s) CURRENT_PILL_STATES[s] = 'on_confident'; }
+    }
+    if(Array.isArray(enr.tags_known)){
+      for(const slug of enr.tags_known){ const s = slugify(slug); if(s) CURRENT_PILL_STATES[s] = 'on_confident'; }
+    }
+    if(Array.isArray(enr.tags_proposed)){
+      for(const slug of enr.tags_proposed){ const s = slugify(slug); if(s && !CURRENT_PILL_STATES[s]) CURRENT_PILL_STATES[s] = 'on_uncertain'; }
+    }
+    // v0.4 author_name → synthesize an author:<slug> on_uncertain pill
+    if(enr.author_name){
+      const aslug = slugify('author:' + enr.author_name);
+      if(aslug && !CURRENT_PILL_STATES[aslug]) CURRENT_PILL_STATES[aslug] = 'on_uncertain';
+    }
+  }
+  // Derived list of currently-on slugs (compat with old code paths)
+  CURRENT_APPLIED_TAGS = Object.entries(CURRENT_PILL_STATES)
+    .filter(([_, st]) => st === 'on_confident' || st === 'on_uncertain')
+    .map(([s]) => s);
+
+  // Compute warnings from current artifact + pill states (R1-R5, JS port of attention_rules.py)
+  CURRENT_WARNINGS = computeWarnings();
+  renderPillWall();
+  renderAppliedPills();
+  renderTagBrowse();
+}
+function inboxPrev(){
+  if(INBOX_IDX<=0) return;
+  inboxSelectItem(QUEUE[INBOX_IDX-1].queue_id);
+}
+function inboxNext(){
+  if(INBOX_IDX>=QUEUE.length-1) return;
+  inboxSelectItem(QUEUE[INBOX_IDX+1].queue_id);
+}
+async function inboxScrap(){
+  if(INBOX_IDX<0) return;
+  const q = QUEUE[INBOX_IDX];
+  if(!confirm(`Scrap queue item #${q.queue_id}?`)) return;
+  try{
+    // v0.6 Item 8c: server-side mark as 'skip' so ingest scan won't re-queue
+    // the same raw file; client-side loadQueue() filters 'skip' out of the
+    // active queue so the row actually disappears from the UI.
+    await api('/api/queue-update', {queue_id: q.queue_id, status: 'skip'});
+    const nextTarget = QUEUE[INBOX_IDX+1] || QUEUE[INBOX_IDX-1] || null;
+    INBOX_IDX = -1;
+    await loadQueue();
+    if(nextTarget){
+      const stillThere = QUEUE.find(r => r.queue_id === nextTarget.queue_id);
+      if(stillThere) inboxSelectItem(stillThere.queue_id);
+      else if(QUEUE.length) inboxSelectItem(QUEUE[0].queue_id);
+    }
+    toast('Scrapped', 'ok');
+  }catch(e){ toast('Scrap failed: '+e.message,'err'); }
+}
+// v0.6 Item 8d follow-up: explicit OPEN button for the inbox Source URL
+// field. Reads the current value (not the queue item's stored value) so the
+// user can paste/edit and launch without saving first.
+function openInboxSourceUrl(){
+  const el = document.getElementById('fSourceUrl');
+  const url = el ? (el.value || '').trim() : '';
+  if(!url){ toast('No source URL','err'); return; }
+  if(!/^https?:\/\//i.test(url)){ toast('URL must start with http:// or https://','err'); return; }
+  window.open(url, '_blank', 'noopener');
+}
+async function inboxSave(release){
+  if(INBOX_IDX<0){ toast('No item selected','err'); return; }
+  const q = QUEUE[INBOX_IDX];
+  let id = document.getElementById('fId').value.trim();
+  if(!id){
+    const r = await api('/api/next-id', {});
+    id = r.id;
+  }
+  // v0.5: derive applied tags from pill_states (on_confident | on_uncertain count as applied).
+  syncAppliedFromStates();
+  // v0.6 Item 8d C5: gate save-to-vault on minimum tagging. Mike's rule:
+  // "Items are to remain in INBOX until adequately tagged." Require at
+  // least one on_confident tag, and reuse R1-R5 attention rules — any
+  // missing_category warning blocks the save. Uncertain/proposed pills
+  // don't count as commitment, only confirmed tags do.
+  const anyConfident = Object.values(CURRENT_PILL_STATES).some(s => s === 'on_confident');
+  if(!anyConfident){
+    toast('Save blocked: needs at least 1 confirmed tag','err');
+    return;
+  }
+  const _warn = computeWarnings();
+  const _missingCat = _warn.filter(w => w.startsWith('missing_category:')).map(w => w.split(':')[1]);
+  if(_missingCat.length){
+    toast('Save blocked: missing required category ('+_missingCat.join(', ')+')','err');
+    return;
+  }
+  const fields = {
+    source_url: document.getElementById('fSourceUrl').value || null,
+    source_platform: document.getElementById('fSourcePlatform').value || null,
+    ingest_source: q.ingest_source || 'inbox',
+    ingest_date: new Date().toISOString().slice(0,10),
+    storage_mode: document.getElementById('fStorageMode').value,
+    local_asset_path: q.raw_path || null,
+    media_type: document.getElementById('fMediaType').value || null,
+    post_date: document.getElementById('fPostDate').value || null,
+    post_date_confidence: document.querySelector('#fConfidenceRow input[type=radio]:checked')?.value || 'unknown',
+    capture_date: document.getElementById('fCaptureDate').value || null,
+    description_short: document.getElementById('fShortDesc').value || null,
+    description_long: document.getElementById('fLongDesc').value || null,
+    extracted_text: document.getElementById('fExtractedText').value || null,
+    tags: CURRENT_APPLIED_TAGS,
+    pill_states: {...CURRENT_PILL_STATES},
+    notes: document.getElementById('fNotes').value || null
+  };
+  try{
+    await api('/api/artifact-save', {
+      queue_id: q.queue_id,
+      id: id,
+      fields: fields,
+      raw_path: q.raw_path || null,
+      release_immediately: !!release
+    });
+    toast(`Saved ${id}${release?' (released)':''}`,'ok');
+    // Remove from queue list
+    QUEUE.splice(INBOX_IDX,1);
+    populateInboxSelect();
+    await loadDb();
+    await loadTags();
+    if(QUEUE.length){ inboxSelectItem(QUEUE[Math.min(INBOX_IDX,QUEUE.length-1)].queue_id); }
+    else { INBOX_IDX=-1; document.getElementById('inboxProg').textContent='0 of 0'; document.getElementById('inboxViewer').innerHTML='<div class="noMedia">Queue empty</div>'; clearInboxRight(); }
+  }catch(e){ toast('Save failed: '+e.message,'err'); }
+}
+
+async function enrichCurrent(){
+  if(INBOX_IDX<0) return;
+  const q = QUEUE[INBOX_IDX];
+  const dot = document.getElementById('aiDot');
+  const msg = document.getElementById('aiMsg');
+  dot.className = 'aiDot run';
+  msg.textContent = 'enriching…';
+  try{
+    const r = await api('/api/enrich', {queue_id: q.queue_id});
+    dot.className = 'aiDot ok';
+    msg.textContent = 'done';
+    // Merge fields in UI from enrichment
+    if(r.enrichment){
+      q.enrichment_json = JSON.stringify(r.enrichment);
+      populateInboxFields(q);
+    }
+    await loadTags();
+    renderTagBrowse();
+  }catch(e){
+    dot.className = 'aiDot err';
+    msg.textContent = 'err: ' + e.message.slice(0,60);
+  }
+}
+
+// ==================== TAG PICKER ====================
+function renderAppliedPills(){
+  const host = document.getElementById('appliedPills');
+  host.innerHTML = CURRENT_APPLIED_TAGS.map(slug => {
+    const t = TAGS_BY_SLUG[slug];
+    const disp = t ? t.display_name : titleCase(slug);
+    const prop = t && t.is_proposed ? ' proposed' : '';
+    return `<span class="tagPill${prop}">${esc(disp)}<span class="x" onclick="removeAppliedTag('${esc(slug)}')">&times;</span></span>`;
+  }).join('');
+}
+function addAppliedTag(slug){
+  slug = slugify(slug);
+  if(!slug) return;
+  // v0.5: use pill-state model. Exclusivity is controlled by vocab.is_exclusive (category scope).
+  const t = TAGS_BY_SLUG[slug];
+  if(t && t.category && t.is_exclusive){
+    // Clear other on_* pills in the same exclusive category.
+    for(const [s, st] of Object.entries(CURRENT_PILL_STATES)){
+      if(s === slug) continue;
+      const other = TAGS_BY_SLUG[s];
+      if(other && other.category === t.category && (st === 'on_confident' || st === 'on_uncertain')){
+        // Drop the pill entirely (off_suspected would confuse the user here).
+        delete CURRENT_PILL_STATES[s];
+      }
+    }
+  }
+  CURRENT_PILL_STATES[slug] = 'on_confident';
+  syncAppliedFromStates();
+  CURRENT_WARNINGS = computeWarnings();
+  renderPillWall();
+  renderAppliedPills();
+  renderTagBrowse();
+}
+function removeAppliedTag(slug){
+  // v0.5: removing from UI means drop the pill entirely.
+  delete CURRENT_PILL_STATES[slug];
+  syncAppliedFromStates();
+  CURRENT_WARNINGS = computeWarnings();
+  renderPillWall();
+  renderAppliedPills();
+  renderTagBrowse();
+}
+function syncAppliedFromStates(){
+  CURRENT_APPLIED_TAGS = Object.entries(CURRENT_PILL_STATES)
+    .filter(([_, st]) => st === 'on_confident' || st === 'on_uncertain')
+    .map(([s]) => s);
+}
+
+// v0.5 — JS port of core/attention_rules.py (R1-R5). Returns warning slugs.
+function computeWarnings(){
+  const warnings = [];
+  const platform = (document.getElementById('fSourcePlatform')?.value || '').toLowerCase();
+  const postDate = document.getElementById('fPostDate')?.value || '';
+  const mediaType = (document.getElementById('fMediaType')?.value || '').toLowerCase();
+  const descShort = document.getElementById('fShortDesc')?.value || '';
+  const descLong = document.getElementById('fLongDesc')?.value || '';
+  const extracted = document.getElementById('fExtractedText')?.value || '';
+  const q = (INBOX_IDX >= 0) ? QUEUE[INBOX_IDX] : null;
+  const ingestSource = q ? (q.ingest_source || '') : '';
+  const onSlugs = new Set(Object.entries(CURRENT_PILL_STATES)
+    .filter(([_, st]) => st === 'on_confident' || st === 'on_uncertain')
+    .map(([s]) => s));
+  function countInCategory(cat){
+    let n = 0;
+    for(const s of onSlugs){
+      const v = TAGS_BY_SLUG[s];
+      if(v && v.category === cat) n++;
+    }
+    return n;
+  }
+  // R1 — social-platform posts should have a post_date.
+  if(SOCIAL_PLATFORMS.has(platform) && !postDate) warnings.push('missing_field:post_date');
+  // R2 — top-level photo/video needs a content_kind pill.
+  if((mediaType === 'photo' || mediaType === 'video') && countInCategory('content_kind') === 0){
+    warnings.push('missing_category:content_kind');
+  }
+  // R3 — description mentions a Title-Case bigram but no people/bands pills.
+  const desc = [descShort, descLong, extracted].join(' ');
+  if(TITLECASE_BIGRAM.test(desc) && countInCategory('people') === 0 && countInCategory('bands') === 0){
+    warnings.push('missing_category:people_or_bands');
+  }
+  // v0.6 Item 8c: R4 (extension captures must be scoped) removed — scope is
+  // no longer a distinct category; Mike uses regular topic/content tags for
+  // this instead.
+  // R5 — any pill is on but media_type is empty.
+  if(onSlugs.size > 0 && !mediaType) warnings.push('missing_field:media_type');
+  return warnings;
+}
+
+function renderPillWall(){
+  const host = document.getElementById('pillWall');
+  if(!host) return;
+  // v0.6 Item 8d follow-up C1: guard against the race where renderPillWall
+  // is invoked before loadTags() populates TAG_LIST. If we render now, every
+  // current slug will be misfiled into __uncategorized__ and the accumulated
+  // view will show (0). Leave the host content alone — the next proper call
+  // (after loadTags resolves) will populate it correctly.
+  if(!Array.isArray(TAG_LIST) || TAG_LIST.length === 0) return;
+  // Group vocab by category
+  const byCat = {};
+  TAG_LIST.forEach(t => {
+    const cat = t.category || '__uncategorized__';
+    if(!byCat[cat]) byCat[cat] = [];
+    byCat[cat].push(t);
+  });
+  // Also include any currently-set pills not in vocab (shouldn't happen after backfill, but be safe).
+  for(const slug of Object.keys(CURRENT_PILL_STATES)){
+    if(!TAGS_BY_SLUG[slug]){
+      const cat = '__uncategorized__';
+      if(!byCat[cat]) byCat[cat] = [];
+      byCat[cat].push({slug, display_name: titleCase(slug), category: null, is_proposed: 1, usage_count: 0});
+    }
+  }
+  // Pin category order per design §4.3, then alphabetical leftovers, then __uncategorized__ last.
+  const known = CATEGORY_ORDER.filter(c => byCat[c]);
+  const rest = Object.keys(byCat).filter(c => !CATEGORY_ORDER.includes(c) && c !== '__uncategorized__').sort();
+  const cats = [...known, ...rest];
+  if(byCat['__uncategorized__']) cats.push('__uncategorized__');
+
+  // Category-level warnings map
+  const catWarnings = {};
+  const fieldWarnings = [];
+  for(const w of CURRENT_WARNINGS){
+    if(w.startsWith('missing_category:')){
+      const c = w.slice('missing_category:'.length);
+      catWarnings[c === 'people_or_bands' ? 'people' : c] = w;
+      if(c === 'people_or_bands') catWarnings['bands'] = w;
+    } else {
+      fieldWarnings.push(w);
+    }
+  }
+
+  // v0.6 Item 8d follow-up C5/C6: ACCUMULATED VIEW at the top. A compact
+  // strip of "what's currently applied" across every category, so Mike
+  // can see at a glance which pills are on without scanning each section.
+  // Updates on every renderPillWall() call (i.e. whenever a pill is
+  // clicked), so it stays in sync.
+  const appliedAll = TAG_LIST
+    .filter(t => {
+      const st = CURRENT_PILL_STATES[t.slug];
+      return st === 'on_confident' || st === 'on_uncertain';
+    })
+    .sort((a, b) => (a.category||'').localeCompare(b.category||'') || a.slug.localeCompare(b.slug));
+  const accumulatedHtml = `<div class="pillAccumulated" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;margin-bottom:8px;background:var(--bg3);border:1px solid var(--gold2);border-radius:4px;min-height:28px">
+    <span style="font:600 10px var(--mono);color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-right:4px;align-self:center">Applied (${appliedAll.length})</span>
+    ${appliedAll.length
+      ? appliedAll.map(t => pillHtml(t)).join('')
+      : '<span style="font:11px var(--mono);color:var(--text2);font-style:italic;align-self:center">(nothing applied yet)</span>'}
+  </div>`;
+
+  // v0.6 Item 8d follow-up C5/C6: categories are always-open sections now
+  // — no <details>/<summary>, no collapse toggle. Mike wants the whole
+  // pill surface visible at once; hiding any of it is friction.
+  host.innerHTML = accumulatedHtml + cats.map(cat => {
+    const label = cat === '__uncategorized__' ? 'UNCATEGORIZED' : cat.toUpperCase();
+    const pills = byCat[cat].slice();
+    // Sort: on_confident > on_uncertain > off_suspected > off_maybe > unset
+    const stateRank = s => {
+      const st = CURRENT_PILL_STATES[s];
+      if(st === 'on_confident') return 0;
+      if(st === 'on_uncertain') return 1;
+      if(st === 'off_suspected') return 2;
+      if(st === 'off_maybe') return 3;
+      return 4;
+    };
+    pills.sort((a,b) => stateRank(a.slug) - stateRank(b.slug)
+      || (b.usage_count||0) - (a.usage_count||0)
+      || a.slug.localeCompare(b.slug));
+    const onCount = pills.filter(t => {
+      const st = CURRENT_PILL_STATES[t.slug];
+      return st === 'on_confident' || st === 'on_uncertain';
+    }).length;
+    const catWarn = catWarnings[cat] ? `<span class="catWarn" title="${esc(catWarnings[cat])}">&#9888;</span>` : '';
+    return `<div class="pillCategory pillCategoryOpen">
+      <div class="pillCatHead"><span>${esc(label)}${catWarn}</span><span class="summaryCount">${onCount}/${pills.length}</span></div>
+      <div class="pills">${pills.map(t => pillHtml(t)).join('')}</div>
+    </div>`;
+  }).join('');
+
+  // Field-level warnings: glow the relevant control
+  document.querySelectorAll('.fieldGroup.warn').forEach(el => el.classList.remove('warn'));
+  for(const w of fieldWarnings){
+    const name = w.slice('missing_field:'.length);
+    const map = {post_date: 'fPostDate', media_type: 'fMediaType'};
+    const id = map[name];
+    if(id){
+      const el = document.getElementById(id);
+      if(el){
+        const grp = el.closest('.fieldGroup');
+        if(grp){ grp.classList.add('warn'); grp.title = w; }
+      }
+    }
+  }
+}
+
+function pillHtml(t){
+  // v0.6 Item 8d follow-up C4: dropped the "proposed" visual flag and
+  // tooltip suffix. Proposed status no longer exists as a concept; the
+  // is_proposed bit on legacy rows is ignored at render time.
+  const st = CURRENT_PILL_STATES[t.slug];
+  let cls = 'pill';
+  if(st === 'on_confident') cls += ' on-conf';
+  else if(st === 'on_uncertain') cls += ' on-unc';
+  else if(st === 'off_suspected') cls += ' off-sus';
+  else if(st === 'off_maybe') cls += ' off-may';
+  else cls += ' off-may';
+  const title = `${t.slug}${t.is_exclusive?' (exclusive)':''}`;
+  return `<span class="${cls}" onclick="togglePill('${esc(t.slug)}')" title="${esc(title)}">${esc(t.display_name)}<span class="cnt">${t.usage_count||0}</span></span>`;
+}
+
+function togglePill(slug){
+  const st = CURRENT_PILL_STATES[slug];
+  if(st === 'on_confident' || st === 'on_uncertain'){
+    // Turn off — drop entirely (operator explicitly clicked off).
+    delete CURRENT_PILL_STATES[slug];
+  } else {
+    // off_suspected / off_maybe / unset → operator override to on_confident.
+    addAppliedTag(slug);
+    return;
+  }
+  syncAppliedFromStates();
+  CURRENT_WARNINGS = computeWarnings();
+  renderPillWall();
+  renderAppliedPills();
+  renderTagBrowse();
+}
+
+// pillAdd input — Enter creates a proposed tag and applies it.
+(function setupPillAdd(){
+  const input = document.getElementById('pillAdd');
+  const sug = document.getElementById('pillSuggest');
+  if(!input) return;
+  let hl = -1;
+  let matches = [];
+  function render(q){
+    q = (q||'').trim().toLowerCase();
+    matches = q ? TAG_LIST.filter(t => t.slug.includes(q) || (t.display_name||'').toLowerCase().includes(q)).slice(0,20) : TAG_LIST.slice(0,20);
+    let html = matches.map((t,i) => {
+      const prop = t.is_proposed ? ' proposed' : '';
+      const cat = t.category ? ` [${esc(t.category)}]` : '';
+      return `<div class="sg${prop}" data-i="${i}" data-slug="${esc(t.slug)}">${esc(t.display_name)}${cat} <span class="cnt">${esc(t.slug)} · ${t.usage_count||0}</span></div>`;
+    }).join('');
+    const slug = slugify(q);
+    if(slug && !TAGS_BY_SLUG[slug]){
+      // v0.6 Item 8d follow-up C3: creating a pill now *requires* a category
+      // choice. Mike refuses to leave uncategorized pills in the vocab, so
+      // the single "+ Create proposed pill" line is replaced by one entry
+      // per real category. Clicking any of them creates the tag with that
+      // category attached and applies it to the current artifact.
+      for(const cat of CATEGORY_ORDER){
+        html += `<div class="sg propose" data-slug="${esc(slug)}" data-propose="1" data-cat="${esc(cat)}">+ Create "${esc(slug)}" as <span style="color:var(--gold2);font-weight:600">${esc(cat)}</span></div>`;
+      }
+    }
+    sug.innerHTML = html;
+    sug.classList.add('open');
+    // Position below input
+    const r = input.getBoundingClientRect();
+    sug.style.left = r.left + 'px';
+    sug.style.top = (r.bottom + window.scrollY) + 'px';
+    sug.style.width = r.width + 'px';
+    hl = -1;
+  }
+  input.addEventListener('input', e => render(e.target.value));
+  input.addEventListener('focus', e => render(e.target.value));
+  input.addEventListener('blur', () => setTimeout(() => sug.classList.remove('open'), 200));
+  input.addEventListener('keydown', async e => {
+    const items = sug.querySelectorAll('.sg');
+    if(e.key === 'ArrowDown'){ e.preventDefault(); hl = Math.min(items.length-1, hl+1); items.forEach((x,i)=>x.classList.toggle('hl', i===hl)); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); hl = Math.max(0, hl-1); items.forEach((x,i)=>x.classList.toggle('hl', i===hl)); }
+    else if(e.key === 'Enter'){
+      e.preventDefault();
+      // v0.6 Item 8d follow-up C3: Enter only applies the highlighted row.
+      // If the highlight is a "+ Create ... as <cat>" propose row, that
+      // row carries a data-cat, so we can create with a real category. If
+      // the user hit Enter with no highlight AND the slug doesn't exist,
+      // we refuse — creating blind would drop the pill into the
+      // uncategorized bucket Mike banned. Autocomplete must be used.
+      let slug = null;
+      let cat = null;
+      if(hl >= 0 && items[hl]){
+        slug = items[hl].dataset.slug;
+        cat = items[hl].dataset.cat || null;
+        const isPropose = items[hl].dataset.propose === '1';
+        if(isPropose && !cat) return;  // guard, should not happen
+        if(isPropose && !TAGS_BY_SLUG[slug]){
+          try{
+            await api('/api/tag-create', {slug, display_name: titleCase(slug.split(':').pop()), category: cat, is_proposed: 0});
+            await loadTags();
+          }catch(err){ toast('Create failed: ' + err.message, 'err'); return; }
+        }
+      } else {
+        slug = slugify(input.value);
+        if(!slug) return;
+        if(!TAGS_BY_SLUG[slug]){
+          toast('Pick a category from the suggestions to create "'+slug+'"','err');
+          return;
+        }
+      }
+      if(!slug) return;
+      addAppliedTag(slug);
+      input.value = '';
+      sug.classList.remove('open');
+    } else if(e.key === 'Escape'){ sug.classList.remove('open'); }
+  });
+  sug.addEventListener('mousedown', async e => {
+    const el = e.target.closest('.sg');
+    if(!el) return;
+    e.preventDefault();
+    const slug = el.dataset.slug;
+    const cat  = el.dataset.cat || null;
+    if(el.dataset.propose){
+      // v0.6 Item 8d follow-up C3: every propose row now carries a
+      // data-cat (one row per CATEGORY_ORDER entry). Pass that category
+      // through so the new tag lands in a real bucket, not "uncategorized".
+      try{
+        await api('/api/tag-create', {slug, display_name: titleCase(slug.split(':').pop()), category: cat, is_proposed: 0});
+        await loadTags();
+      }catch(err){ toast('Create failed: ' + err.message, 'err'); return; }
+    }
+    addAppliedTag(slug);
+    input.value = '';
+    sug.classList.remove('open');
+  });
+})();
+function renderTagBrowse(){
+  // v0.5: legacy tag-browse is hidden; pill wall replaces it. Kept as a no-op to avoid breaking calls.
+  const host = document.getElementById('tagBrowse');
+  if(!host) return;
+  const byCat = { '__uncategorized__': [] };
+  TAG_LIST.forEach(t=>{
+    const c = t.category || '__uncategorized__';
+    if(!byCat[c]) byCat[c] = [];
+    byCat[c].push(t);
+  });
+  const cats = Object.keys(byCat).sort((a,b)=> a==='__uncategorized__' ? 1 : b==='__uncategorized__' ? -1 : a.localeCompare(b));
+  host.innerHTML = cats.map(c => {
+    const label = c==='__uncategorized__' ? 'UNCATEGORIZED' : c.toUpperCase();
+    const tags = byCat[c].sort((a,b)=> (b.usage_count||0) - (a.usage_count||0) || a.slug.localeCompare(b.slug));
+    return `<div class="tagGroup">
+      <div class="gLabel">${esc(label)}</div>
+      <div class="gTags">${tags.map(t=>{
+        const on = CURRENT_APPLIED_TAGS.includes(t.slug) ? ' on' : '';
+        const prop = t.is_proposed ? ' proposed' : '';
+        return `<span class="tagChip${on}${prop}" onclick="toggleTagChip('${esc(t.slug)}')" title="${esc(t.display_name)}">${esc(t.display_name)}<span class="cnt">${t.usage_count||0}</span></span>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('');
+}
+function toggleTagChip(slug){
+  if(CURRENT_APPLIED_TAGS.includes(slug)) removeAppliedTag(slug);
+  else addAppliedTag(slug);
+}
+
+// Autocomplete input
+(function setupTagAutocomplete(){
+  const input = document.getElementById('tagInputBox');
+  const sug = document.getElementById('tagSuggest');
+  if(!input) return;
+  let hlIdx = -1;
+  let curMatches = [];
+  function render(q){
+    q = q.trim().toLowerCase();
+    const matches = q ? TAG_LIST.filter(t => t.slug.includes(q) || t.display_name.toLowerCase().includes(q)).slice(0,20) : TAG_LIST.slice(0,20);
+    curMatches = matches;
+    // v0.6 Item 8d follow-up C4: legacy tagPicker autocomplete (hidden via
+    // display:none) — stripped proposed styling + dropped the "+ Add proposed
+    // tag" create row. Users who want to create a tag use the Tag Manager
+    // CREATE modal which enforces category.
+    let html = matches.map((t,i)=>{
+      return `<div class="sg" data-i="${i}" data-slug="${esc(t.slug)}">${esc(t.display_name)} <span class="cnt">${t.slug} · ${t.usage_count||0}</span></div>`;
+    }).join('');
+    sug.innerHTML = html;
+    sug.classList.add('open');
+    hlIdx = -1;
+  }
+  input.addEventListener('input', e=> render(e.target.value));
+  input.addEventListener('focus', e=> render(e.target.value));
+  input.addEventListener('blur', ()=> setTimeout(()=>sug.classList.remove('open'), 200));
+  input.addEventListener('keydown', async (e)=>{
+    const items = sug.querySelectorAll('.sg');
+    if(e.key==='ArrowDown'){ e.preventDefault(); hlIdx=Math.min(items.length-1,hlIdx+1); updateHl(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); hlIdx=Math.max(0,hlIdx-1); updateHl(); }
+    else if(e.key==='Enter'){
+      // v0.6 Item 8d follow-up C4: legacy autocomplete no longer auto-creates
+      // proposed tags. If the slug doesn't exist, point user at the Tag
+      // Manager CREATE modal (which enforces category).
+      e.preventDefault();
+      let slug = null;
+      if(hlIdx>=0 && items[hlIdx]){ slug = items[hlIdx].dataset.slug; }
+      else { slug = slugify(input.value); }
+      if(slug){
+        if(!TAGS_BY_SLUG[slug]){
+          toast('Unknown tag — create it in Tag Manager first','err');
+          return;
+        }
+        addAppliedTag(slug);
+        input.value='';
+        sug.classList.remove('open');
+      }
+    } else if(e.key==='Escape'){ sug.classList.remove('open'); }
+    function updateHl(){ items.forEach((el,i)=> el.classList.toggle('hl', i===hlIdx)); }
+  });
+  sug.addEventListener('mousedown', async (e)=>{
+    const el = e.target.closest('.sg');
+    if(!el) return;
+    e.preventDefault();
+    const slug = el.dataset.slug;
+    if(!slug || !TAGS_BY_SLUG[slug]){
+      toast('Unknown tag — create it in Tag Manager first','err');
+      return;
+    }
+    addAppliedTag(slug);
+    input.value='';
+    sug.classList.remove('open');
+  });
+})();
+
+// ==================== VAULT ====================
+let vaultRenderTimer = null;
+function vaultRenderSoon(){
+  clearTimeout(vaultRenderTimer);
+  vaultRenderTimer = setTimeout(vaultRender, 180);
+}
+function vaultSetView(v){
+  VAULT_VIEW = v;
+  document.getElementById('vBtnGrid').classList.toggle('active', v==='grid');
+  document.getElementById('vBtnTable').classList.toggle('active', v==='table');
+  document.getElementById('vaultGrid').style.display = v==='grid' ? 'flex' : 'none';
+  document.getElementById('vaultTable').style.display = v==='table' ? 'block' : 'none';
+  vaultRender();
+}
+// v0.6 Item 8: renderVaultTagBar + cycleVaultTag removed — the tag-pill
+// filter row above the table was dropped per Mike. Text search covers the
+// same use case without flooding screen real estate with low-value chips.
+function filterArtifacts(){
+  // v0.6 Item 8: filter surface trimmed down to just search + "hide children"
+  // (default on). Date selectors, status dropdown, storage dropdown, and the
+  // tag-pill chip filters were removed — they all move to the column
+  // header-sort / search path. FILTER_TAG_STATE is kept in memory for
+  // backwards compat but is never populated now that the pill bar is gone.
+  const searchEl = document.getElementById('vSearch');
+  const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
+  return ARTIFACTS.filter(a => {
+    if(a.parent_artifact_id) return false;  // always hide children inline
+    if(a.status!=='vault' && a.status!=='released') return false;  // default scope
+    if(search){
+      const hay = [(a.description_short||''),(a.description_long||''),(a.tags||''),(a.extracted_text||''),(a.source_url||''),(a.id||''),(a.notes||'')].join(' ').toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+}
+function vaultRender(){
+  // v0.6 Item 8: sort is handled entirely by VAULT_SORT_COL/DIR clicked from
+  // the column headers (previously a separate vSort dropdown existed). If no
+  // sort was clicked, default to post_date desc.
+  let arr = filterArtifacts();
+  const col = VAULT_SORT_COL || 'post_date';
+  const dir = VAULT_SORT_COL ? VAULT_SORT_DIR : 'desc';
+  const mul = dir==='asc' ? 1 : -1;
+  arr = [...arr].sort((a,b)=>{
+    let av, bv;
+    if(col==='status'){ av = a.status==='released'?1:0; bv = b.status==='released'?1:0; }
+    else { av = a[col]||''; bv = b[col]||''; }
+    if(av<bv) return -1*mul;
+    if(av>bv) return 1*mul;
+    return 0;
+  });
+  const cnt = document.getElementById('vCount');
+  if(cnt) cnt.textContent = `${arr.length} of ${ARTIFACTS.length}`;
+  if(VAULT_VIEW==='grid') renderGrid(arr);
+  else renderTable(arr);
+  // v0.6 Item 8d #2: panel is always rendered. renderDetail handles both
+  // the selected case and the no-selection placeholder.
+  renderDetail(CURRENT_ARTIFACT_ID);
+  VAULT_VISIBLE_IDS = arr.map(x => x.id);
+}
+function renderGrid(arr){
+  // v0.6 Item 8b: card content trimmed to thumbnail + short description +
+  // source badge per Mike. ID label, long description, date line, and the
+  // primary-tag pill are gone.
+  const host = document.getElementById('vaultGrid');
+  host.innerHTML = arr.map(a => {
+    const sel = a.id===CURRENT_ARTIFACT_ID ? ' selected' : '';
+    const badges = [];
+    if(a.status==='released') badges.push('<span class="badge" title="released">&#9733;</span>');
+    if(a.storage_mode==='url_only') badges.push('<span class="badge" title="url only">&#128279;</span>');
+    else if(a.storage_mode==='vaulted') badges.push('<span class="badge" title="vaulted">&#128193;</span>');
+    else if(a.storage_mode==='referenced') badges.push('<span class="badge" title="referenced">&#8599;</span>');
+    const thumb = thumbHtml(a);
+    const src = (a.source_platform || a.ingest_source || '').toLowerCase();
+    const srcHtml = src ? `<span class="src ${esc(src)}">${esc(sourceLabel(src))}</span>` : '';
+    return `<div class="vCard${sel}" onclick="selectArtifact('${esc(a.id)}')">
+      <div class="thumbWrap">${thumb}<div class="badges">${badges.join('')}</div></div>
+      <div class="info">
+        <div class="vshort">${esc(a.description_short||'')}</div>
+        ${srcHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+// v0.6 Item 8b: short, screen-readable source monograms for the grid badge.
+// Unknown sources fall through to the raw slug so the tag always tells the
+// truth rather than masking an unrecognized platform.
+function sourceLabel(src){
+  const map = {
+    facebook:'FB', instagram:'IG', youtube:'YT', tiktok:'TT',
+    reverbnation:'RN', twitter:'X', fan:'FAN', local:'LOCAL',
+    'url-entry':'URL', 'extension-capture':'CAPTURE',
+  };
+  return map[src] || src.toUpperCase();
+}
+function thumbHtml(a){
+  // v0.6 Item 8b: HTML/webpage artifacts get a clean "webpage" placeholder
+  // (globe + hostname) instead of the old live-embedded HTML render that
+  // Mike flagged on Medusa's Disco. The placeholder kicks in when the media
+  // type is html/webpage, or when the local asset path ends in .html/.htm
+  // and no thumbnail exists — i.e. anytime we'd otherwise try to render
+  // the HTML source file as an <img>.
+  const mt = (a.media_type||'').toLowerCase();
+  const lap = (a.local_asset_path||'').toLowerCase();
+  const isWeb = mt==='html' || mt==='webpage' || lap.endsWith('.html') || lap.endsWith('.htm');
+  if(a.thumbnail_path){
+    return `<img src="/image-raw?path=${encodeURIComponent(a.thumbnail_path)}" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'noThumb',textContent:'${esc(a.media_type||'no thumb')}'}))">`;
+  }
+  if(isWeb){
+    let host = '';
+    try { host = a.source_url ? new URL(a.source_url).host.replace(/^www\./,'') : ''; } catch(_){}
+    return `<div class="webThumb"><div class="globe">&#127760;</div>${host?`<div class="host">${esc(host)}</div>`:''}<div class="tag">WEB PAGE</div></div>`;
+  }
+  if(a.storage_mode!=='url_only' && a.local_asset_path){
+    return `<img src="/image-raw?path=${encodeURIComponent(a.local_asset_path)}" data-asset-path="${esc(a.local_asset_path)}" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'noThumb',textContent:'${esc(a.media_type||'asset')}'}))">`;
+  }
+  return `<div class="noThumb">${esc(a.media_type||'URL only')}</div>`;
+}
+function renderTable(arr){
+  // v0.6 Item 8: column order is now [DATE] [PLATFORM] [Short Description]
+  // [Status] [Storage] — star and ID columns removed. Sort is driven by
+  // VAULT_SORT_COL/DIR (set from header click); the separate sortArtifacts
+  // pass was dropped above. Sort arrows are rendered here.
+  const body = document.getElementById('vaultTableBody');
+  document.querySelectorAll('#vaultTable th').forEach(th=>{
+    const col = th.dataset.sort;
+    const arr2 = th.querySelector('.arr');
+    if(arr2) arr2.remove();
+    if(col===VAULT_SORT_COL){
+      const s = document.createElement('span');
+      s.className='arr';
+      s.textContent = VAULT_SORT_DIR==='asc' ? '↑' : '↓';
+      th.appendChild(s);
+    }
+  });
+  body.innerHTML = arr.map(a => {
+    const sel = a.id===CURRENT_ARTIFACT_ID ? ' class="selected"' : '';
+    return `<tr${sel} data-id="${esc(a.id)}" onclick="selectArtifact('${esc(a.id)}')">
+      <td>${esc(fmtDate(a.post_date))}</td>
+      <td>${esc(a.source_platform||'')}</td>
+      <td>${esc(a.description_short||'')}</td>
+      <td><span class="pillBadge ${esc(a.status||'')}">${esc(a.status||'')}</span></td>
+      <td><span class="pillBadge ${esc(a.storage_mode||'')}">${esc(a.storage_mode||'')}</span></td>
+    </tr>`;
+  }).join('');
+  _installVaultColResizers();
+}
+
+// v0.6 Item 8: column drag-resize for the vault table — same pattern as the
+// Tag Manager. The grip suppresses its click after drag so the column header
+// doesn't fire a sort cycle when the user releases after a resize.
+function _installVaultColResizers(){
+  const table = document.querySelector('#vaultTable table');
+  if(!table) return;
+  const cols = table.querySelectorAll('colgroup > col');
+  const ths  = table.querySelectorAll('thead th');
+  ths.forEach((th, i) => {
+    if(i >= cols.length || i === ths.length - 1) return;  // no grip on last col
+    if(th.querySelector('.colGrip')) return;
+    const grip = document.createElement('div');
+    grip.className = 'colGrip';
+    th.appendChild(grip);
+    grip.addEventListener('click', e => e.stopPropagation());
+    grip.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const startX = e.pageX;
+      const startW = cols[i].offsetWidth || th.offsetWidth;
+      const onMove = (ev) => {
+        cols[i].style.width = Math.max(40, startW + (ev.pageX - startX)) + 'px';
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+        th.addEventListener('click', swallow, {capture:true, once:true});
+        setTimeout(() => th.removeEventListener('click', swallow, {capture:true}), 0);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+// Attach sortable headers
+document.addEventListener('click', function(e){
+  const th = e.target.closest('#vaultTable th');
+  if(!th) return;
+  const col = th.dataset.sort;
+  if(VAULT_SORT_COL===col){ VAULT_SORT_DIR = (VAULT_SORT_DIR==='asc'?'desc':'asc'); }
+  else { VAULT_SORT_COL = col; VAULT_SORT_DIR = 'asc'; }
+  vaultRender();
+});
+
+// v0.6 Item 8d #4: click-to-toggle tag removal in the side panel.
+//
+// The 8c "pending" variant (flag-on-click, batch-commit-on-navigate) was
+// reverted per Mike. This replacement is:
+//   - Click a pill → fire /api/artifact-update immediately with the tag
+//     removed. No pending state.
+//   - The clicked pill stays in the DOM and gets an ".unselected" class
+//     (dim + dashed + strikethrough). You can see exactly which tags you
+//     just removed without the panel rearranging under your cursor.
+//   - Clicking an unselected pill re-adds the tag (toggle-back / undo).
+//   - The panel is NOT re-rendered after the API call — the unselected
+//     pills only vanish on the next fresh render (select another artifact
+//     and come back, or switch tabs). That's deliberate: it matches Mike's
+//     spec "leave in place; next time we refresh, only show active tags."
+//
+// Local state (the ARTIFACTS entry and its _tags array) is mutated so
+// other surfaces and the next renderDetail see the new truth.
+async function toggleTagOnArtifact(aid, slug, pillEl){
+  const a = ARTIFACTS.find(x => x.id === aid);
+  if(!a) return;
+  const currentTags = a._tags || [];
+  const currentlyOn = currentTags.includes(slug);
+  const newTags = currentlyOn
+    ? currentTags.filter(t => t !== slug)
+    : [...currentTags, slug];
+  try{
+    await api('/api/artifact-update', {id: aid, fields: {tags: newTags}});
+    a._tags = newTags;
+    a.tags  = JSON.stringify(newTags);
+    // Swap ONLY the clicked pill's visual — don't re-render the panel.
+    if(pillEl) pillEl.classList.toggle('unselected', currentlyOn);
+  }catch(e){
+    toast('Tag update failed: '+e.message, 'err');
+  }
+}
+async function selectArtifact(id){
+  // v0.6 Item 8d #2: side panel is always rendered. Selection just updates
+  // CURRENT_ARTIFACT_ID and re-renders; no visibility toggle on the panel
+  // or grip.
+  // v0.6 Item 8d #4: pending-tag-removal flush removed along with the
+  // 8c interaction itself. Replacement TBD.
+  CURRENT_ARTIFACT_ID = id;
+  vaultRender();
+}
+function renderDetail(id){
+  // v0.6 Item 8: side panel slimmed way down per Mike's feedback. Keeps only:
+  // thumbnail, TAGS, URL, Short desc, Long desc, Extracted text, and a
+  // one-liner "POST DATE {date}". Removed: ID header (was redundant with the
+  // selected row), separate Source / Dates / Storage sections, Ingest date,
+  // Capture date, Media type, Local asset path, Link status, Notes, full
+  // Status subsection, Released-at timestamp. Parent/child blocks are only
+  // shown when a link actually exists (otherwise the UI implies parent/child
+  // is a live feature, but it's really just one-shot migration data).
+  //
+  // v0.6 Item 8d #2: panel is always rendered; empty-state placeholder
+  // handles the no-selection case (was: display:none toggle).
+  // v0.6 Item 8d #3: the four action buttons live in #vaultArtifactActions
+  // up in the top bar, populated here. Cleared when no selection.
+  const host = document.getElementById('vaultDetail');
+  const actionsHost = document.getElementById('vaultArtifactActions');
+  if(!id){
+    host.innerHTML = '<div class="dEmpty">Select an artifact to view its details.</div>';
+    if(actionsHost) actionsHost.innerHTML = '';
+    return;
+  }
+  const a = ARTIFACTS.find(x=>x.id===id);
+  if(!a){
+    host.innerHTML = '<em>Not found</em>';
+    if(actionsHost) actionsHost.innerHTML = '';
+    return;
+  }
+  const children = ARTIFACTS.filter(x=>x.parent_artifact_id===id);
+  // v0.6 Item 8c: proposed-vs-accepted visual distinction removed from the
+  // artifact side panel. Mike treats all applied tags the same for the
+  // purposes of this view; the Proposed concept stays in the Tag Manager
+  // where it's a curation signal.
+  // v0.6 Item 8d #4: click a pill to toggle it off the artifact
+  // (immediate commit via /api/artifact-update). Pill stays in place with
+  // a dim ".unselected" look; clicking again re-adds it. Next fresh
+  // render of the panel hides the unselected ones entirely.
+  const tagsHtml = a._tags.map(slug => {
+    const t = TAGS_BY_SLUG[slug];
+    const disp = t ? t.display_name : titleCase(slug);
+    return `<span class="tagPill" data-slug="${esc(slug)}" onclick="toggleTagOnArtifact('${esc(a.id)}','${esc(slug)}',this)" title="Click to remove (click again to re-add)">${esc(disp)}</span>`;
+  }).join('');
+  const isReleased = a.status==='released';
+  const postDateLine = a.post_date
+    ? `<div style="font:11px var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 10px">POST DATE ${esc(fmtDate(a.post_date))}</div>`
+    : '';
+  // v0.6 Item 8c: new side-panel layout per Mike's round-3 feedback:
+  //   1. Action cluster at the TOP (C1 — replaces the old [×] close button;
+  //      the panel is no longer manually closable).
+  //   2. URL promoted to the top too (C3), right under actions, so the link
+  //      is always one glance away — even for long Facebook / TikTok URLs.
+  //   3. Thumbnail/hero below the URL (keeps the visual anchor but out of
+  //      the way of the critical metadata).
+  //   4. POST DATE one-liner, then TAGS (now click-to-pending-remove — C4),
+  //      then Descriptions (short/long/extracted), then parent/child blocks.
+  //   5. RELEASE button has a beefier state-vs-not-state visual (C6) — the
+  //      released variant is a filled green chip with a star, the
+  //      unreleased variant is a muted grey outline that says "NOT
+  //      RELEASED" so the button reads unambiguously as a toggle.
+  // v0.6 Item 8d C2/C3: URL was a full .dSection with an H4 "URL" heading
+  // that looked like an extra bar stacked above the hero image on FB
+  // artifacts. Collapse to a single-line chip — globe glyph + host + the
+  // full URL as a clickable link — so it reads as metadata, not a section.
+  let urlHost = '';
+  try { urlHost = a.source_url ? new URL(a.source_url).host.replace(/^www\./,'') : ''; } catch(_){}
+  const urlBlock = a.source_url
+    ? `<div class="dUrlLine" style="display:flex;align-items:center;gap:6px;font:11px var(--mono);margin:0 0 8px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;overflow:hidden">
+         <span style="flex-shrink:0">&#127760;</span>
+         <span style="flex-shrink:0;color:var(--gold2);text-transform:uppercase;letter-spacing:.5px">${esc(urlHost)}</span>
+         <a href="${esc(a.source_url)}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto" title="${esc(a.source_url)}">${esc(a.source_url)}</a>
+       </div>`
+    : '';
+  // v0.6 Item 8d C5: video artifacts almost always have a .jpg thumbnail for
+  // their local_asset_path (the original clip wasn't vaulted, only the frame
+  // grab was). Playing that as a <video> is impossible and the previous render
+  // silently showed a dead thumbnail. When the artifact is a video:
+  //   a. If local_asset_path points at an actual video file, emit <video>.
+  //   b. Otherwise emit the thumbnail with a ▶ play overlay that opens the
+  //      source_url in a new tab, so at least the user has a clear path to
+  //      the original clip on FB/IG/etc. (Facebook blocks <iframe> embeds via
+  //      frame-ancestors CSP, so inline playback isn't an option.)
+  const VIDEO_EXT_CLIENT = /\.(mp4|mov|avi|mkv|webm|m4v)$/i;
+  const mtLower = (a.media_type||'').toLowerCase();
+  const lapLower = (a.local_asset_path||'').toLowerCase();
+  const isPlayableVideoFile = mtLower === 'video' && VIDEO_EXT_CLIENT.test(lapLower);
+  let heroImg = '';
+  if(isPlayableVideoFile){
+    heroImg = `<video class="dHeroVideo" controls preload="metadata" src="/asset-raw?path=${encodeURIComponent(a.local_asset_path)}" style="max-width:100%;max-height:400px;background:#000;border-radius:4px"></video>`;
+  } else if(mtLower === 'video' && (a.thumbnail_path || a.local_asset_path)){
+    const thumbPath = a.thumbnail_path || a.local_asset_path || '';
+    const openHref = a.source_url ? esc(a.source_url) : '';
+    const platLabel = a.source_platform ? sourceLabel(a.source_platform) : 'source';
+    const openAttrs = a.source_url
+      ? `href="${openHref}" target="_blank" rel="noopener" title="Open original video on ${esc(platLabel)}"`
+      : `href="#" onclick="return false" title="No source URL recorded" style="cursor:not-allowed;opacity:0.5"`;
+    heroImg = `<a class="dHeroVideoLink" ${openAttrs} style="position:relative;display:inline-block;max-width:100%;line-height:0">
+        <img class="dHeroImg" src="/image-raw?path=${encodeURIComponent(thumbPath)}" data-asset-path="${esc(a.local_asset_path||'')}" onerror="this.style.display='none'" style="max-width:100%">
+        <span class="dHeroPlayOverlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.25);color:#fff;font-size:48px;text-shadow:0 2px 8px rgba(0,0,0,0.8);pointer-events:none">&#9654;</span>
+        <span class="dHeroVideoBadge" style="position:absolute;left:6px;top:6px;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;padding:2px 6px;border-radius:3px;line-height:1.4">VIDEO &rarr; ${esc(platLabel)}</span>
+      </a>`;
+  } else if(thumbHtml(a).includes('img')){
+    heroImg = `<img class="dHeroImg" src="/image-raw?path=${encodeURIComponent(a.thumbnail_path||a.local_asset_path||'')}" data-asset-path="${esc(a.local_asset_path||'')}" onerror="this.style.display='none'">`;
+  }
+  const releaseLabel = isReleased ? '&#9733; RELEASED' : '&#9711; NOT RELEASED';
+  const releaseTitle = isReleased
+    ? 'Released — click to un-release (returns to Vault)'
+    : 'Not released — click to mark as released/published';
+  // v0.6 Item 8d #3: action buttons rendered into the top-bar cluster
+  // (#vaultArtifactActions) instead of a .dActionsTop strip inside the
+  // side panel. .dActions wrapper is reused so existing per-variant styles
+  // (btnScrap red, btnDemote gold, btnRelease.on filled-green, etc.) still
+  // apply without change.
+  if(actionsHost){
+    actionsHost.innerHTML = `
+      <span class="dActions">
+        <button onclick="artifactScrap('${esc(a.id)}')" class="btnScrap" title="Permanently delete this artifact (asks for confirmation)">&#10007; SCRAP</button>
+        <button onclick="artifactRequeue('${esc(a.id)}')" class="btnDemote" title="Send back to the Inbox for another review pass">&larr; DEMOTE</button>
+        <button onclick="artifactToggleRelease('${esc(a.id)}')" class="btnRelease${isReleased?' on':''}" title="${releaseTitle}" aria-pressed="${isReleased?'true':'false'}">${releaseLabel}</button>
+        <button onclick="artifactArchive('${esc(a.id)}')" class="btnArchive" title="Hide from default views but keep the record">ARCHIVE</button>
+      </span>`;
+  }
+  host.innerHTML = `
+    ${urlBlock}
+    ${heroImg}
+    ${postDateLine}
+    <div class="dSection">
+      <h4>Tags (${a._tags.length})</h4>
+      <div class="dTagList">${tagsHtml}</div>
+    </div>
+    <div class="dSection">
+      <h4>Description</h4>
+      <div class="dField" data-f="description_short"><label>Short</label><div class="dVal clickable" onclick="editDetailField('description_short')">${esc(a.description_short||'')}</div><input type="text" onblur="saveDetailField('description_short',this.value)" value="${esc(a.description_short||'')}"></div>
+      <div class="dField" data-f="description_long"><label>Long</label><div class="dVal clickable" onclick="editDetailField('description_long')">${esc(a.description_long||'')}</div><textarea onblur="saveDetailField('description_long',this.value)">${esc(a.description_long||'')}</textarea></div>
+      <div class="dField" data-f="extracted_text"><label>Extracted</label><div class="dVal clickable" onclick="editDetailField('extracted_text')">${esc(a.extracted_text||'')}</div><textarea onblur="saveDetailField('extracted_text',this.value)">${esc(a.extracted_text||'')}</textarea></div>
+    </div>
+    ${children.length ? `<div class="dSection"><h4>Children (${children.length})</h4><div class="dChildren">${children.map(c=>`
+      <div class="dChild" onclick="selectArtifact('${esc(c.id)}')">
+        ${c.thumbnail_path?`<img src="/image-raw?path=${encodeURIComponent(c.thumbnail_path)}" onerror="this.style.display='none'">`:''}
+        <div class="cid">${esc(c.id.slice(-6))}</div>
+      </div>`).join('')}</div></div>`: ''}
+    ${a.parent_artifact_id ? `<div class="dSection"><h4>Parent</h4><div class="dField"><div class="dVal clickable" onclick="selectArtifact('${esc(a.parent_artifact_id)}')">${esc(a.parent_artifact_id)}</div></div></div>`:''}
+  `;
+}
+async function closeDetail(){
+  // v0.6 Item 8d #2: panel stays visible; clearing the selection just
+  // re-renders the empty-state placeholder and clears the top-bar
+  // action cluster.
+  // v0.6 Item 8d #4: the 8c pending-tag-removal flush was removed with
+  // the interaction. This function is still async-shaped because call
+  // sites `await` it.
+  CURRENT_ARTIFACT_ID = null;
+  renderDetail(null);
+}
+// v0.6 Item 8b: drag-resize the side panel via the grip element. Mousedown
+// on the grip captures pageX, then mousemove updates the panel's flex-basis
+// so it grows/shrinks on the right of the viewport. Bounded by min-width
+// (220px from CSS) and a max of 70% of the vault body width so it can't
+// fully consume the main content area.
+(function _installVaultDetailResizer(){
+  const grip = document.getElementById('vaultDetailGrip');
+  if(!grip) return;
+  grip.addEventListener('mousedown', (e) => {
+    const panel = document.getElementById('vaultDetail');
+    const body  = document.getElementById('vaultBody');
+    if(!panel || !body) return;
+    e.preventDefault();
+    grip.classList.add('dragging');
+    const startX = e.pageX;
+    const startW = panel.offsetWidth;
+    const maxW = Math.floor(body.offsetWidth * 0.7);
+    const onMove = (ev) => {
+      const delta = startX - ev.pageX;        // drag left  ⇒ wider panel
+      const w = Math.max(220, Math.min(maxW, startW + delta));
+      panel.style.flex = `0 0 ${w}px`;
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      grip.classList.remove('dragging');
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
+function editDetailField(f){
+  const el = document.querySelector(`#vaultDetail .dField[data-f="${f}"]`);
+  if(!el) return;
+  el.classList.add('editing');
+  const input = el.querySelector('input,textarea');
+  if(input){ input.focus(); }
+}
+async function saveDetailField(f, val){
+  const a = ARTIFACTS.find(x=>x.id===CURRENT_ARTIFACT_ID);
+  if(!a) return;
+  if((a[f]||'')===val){
+    const el = document.querySelector(`#vaultDetail .dField[data-f="${f}"]`);
+    if(el) el.classList.remove('editing');
+    return;
+  }
+  try{
+    await api('/api/artifact-update', {id: a.id, fields: {[f]: val}});
+    await loadDb();
+    renderDetail(a.id);
+    vaultRender();
+    toast('Saved','ok');
+  }catch(e){ toast('Save failed: '+e.message,'err'); }
+}
+async function artifactRelease(id){
+  try{ await api('/api/artifact-release', {id: id}); await loadDb(); vaultRender(); toast('Released','ok'); }
+  catch(e){ toast('Release failed: '+e.message,'err'); }
+}
+async function artifactUnrelease(id){
+  try{ await api('/api/artifact-unrelease', {id: id}); await loadDb(); vaultRender(); toast('Unreleased','ok'); }
+  catch(e){ toast('Unrelease failed: '+e.message,'err'); }
+}
+// v0.6 Item 8b: state-toggle wrapper for the new RELEASE button — single
+// click flips between vault and released. The button's visual state (.on
+// class, label, aria-pressed) is set by renderDetail based on a.status.
+async function artifactToggleRelease(id){
+  const a = ARTIFACTS.find(x=>x.id===id);
+  if(!a) return;
+  if(a.status === 'released') { await artifactUnrelease(id); }
+  else                        { await artifactRelease(id); }
+}
+async function artifactArchive(id){
+  if(!confirm(`Archive ${id}?`)) return;
+  // v0.6 Item 8d #4: pending-tag-removal flush removed alongside the 8c
+  // revert. Nothing to commit before archiving now.
+  try{ await api('/api/artifact-archive', {id: id}); await loadDb(); vaultRender(); toast('Archived','ok'); }
+  catch(e){ toast('Archive failed: '+e.message,'err'); }
+}
+async function artifactRequeue(id){
+  // v0.6 Item 8d follow-up TODO: no confirm, stay in vault. Previous flow
+  // asked "Send {id} back to the inbox queue?" and then jumped to the inbox
+  // tab — Mike found this disruptive. Demote should be a fast pass-through:
+  // click, server requeues, next adjacent vault artifact is selected, you
+  // stay in vault. To pick the "next adjacent" row we capture the position
+  // inside VAULT_VISIBLE_IDS BEFORE the refresh, then pick the same index
+  // (which, after the demoted row is gone, now points at the next row) or
+  // fall back to the previous row if we were at the tail.
+  try{
+    const visBefore = (typeof VAULT_VISIBLE_IDS !== 'undefined' && Array.isArray(VAULT_VISIBLE_IDS))
+      ? VAULT_VISIBLE_IDS.slice() : [];
+    const wasIdx = visBefore.indexOf(id);
+    await api('/api/artifact-requeue', {id: id});
+    await loadDb();
+    await loadQueue();
+    vaultRender();
+    // Post-render, VAULT_VISIBLE_IDS no longer contains `id`. Pick the
+    // neighbour at wasIdx (now the row that came after), or wasIdx-1 if we
+    // were at the end, or null if the vault is empty.
+    let nextId = null;
+    if(Array.isArray(VAULT_VISIBLE_IDS) && VAULT_VISIBLE_IDS.length){
+      if(wasIdx >= 0 && wasIdx < VAULT_VISIBLE_IDS.length){
+        nextId = VAULT_VISIBLE_IDS[wasIdx];
+      } else if(wasIdx > 0){
+        nextId = VAULT_VISIBLE_IDS[wasIdx - 1];
+      } else {
+        nextId = VAULT_VISIBLE_IDS[0];
+      }
+    }
+    if(nextId){
+      CURRENT_ARTIFACT_ID = nextId;
+      renderDetail(nextId);
+    } else {
+      CURRENT_ARTIFACT_ID = null;
+      renderDetail(null);
+    }
+    toast('Demoted to inbox','ok');
+  }
+  catch(e){ toast('Requeue failed: '+e.message,'err'); }
+}
+// v0.6 Item 8b: SCRAP = permanent delete with a hard-confirm modal (matches
+// the tag delete pattern from Item 6). No native confirm() — we want the
+// modal styling and ESC-cancel for symmetry with tag deletion.
+function artifactScrap(id){
+  const a = ARTIFACTS.find(x=>x.id===id);
+  if(!a) return;
+  const label = esc(a.description_short || a.id);
+  openModal(`
+    <h3>Scrap artifact?</h3>
+    <div style="margin:6px 0 12px"><code style="background:var(--bg);padding:2px 6px;border-radius:3px">${esc(a.id)}</code><br><span style="font-size:12px;color:var(--text2)">${label}</span></div>
+    <div style="font-size:13px;color:var(--text);margin-bottom:8px">This permanently deletes the artifact and detaches any tags. The local asset file (if any) is moved to quarantine, not deleted from disk.<br><br>This cannot be undone.</div>
+    <div class="actions">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="btnDanger" onclick="_artifactScrapConfirm('${esc(id)}')">SCRAP</button>
+    </div>`);
+}
+async function _artifactScrapConfirm(id){
+  try{
+    await api('/api/artifact-delete', {id: id});
+    CURRENT_ARTIFACT_ID = null;
+    await loadDb();
+    vaultRender();
+    closeModal();
+    closeDetail();
+    toast(`Scrapped ${id}`,'ok');
+  }catch(e){ toast('Scrap failed: '+e.message,'err'); }
+}
+
+// ==================== VOCAB ====================
+// v0.6 Item 6: status-filter buttons (ALL/PROPOSED/ACCEPTED/UNUSED) were
+// removed — column sort + slug search cover the same ground. VOCAB_FILTER
+// no longer exists.
+// v0.6 — three-state column sort: null -> 'asc' -> 'desc' -> null.
+function vocabSortClick(col){
+  if(VOCAB_SORT_COL !== col){ VOCAB_SORT_COL = col; VOCAB_SORT_DIR = 'asc'; }
+  else if(VOCAB_SORT_DIR === 'asc'){ VOCAB_SORT_DIR = 'desc'; }
+  else { VOCAB_SORT_COL = null; VOCAB_SORT_DIR = null; }
+  vocabRender();
+}
+// Pull the comparable value for a row given a sort column key.
+function _vocabSortKey(row, col){
+  switch(col){
+    case 'slug':         return (row.slug || '').toLowerCase();
+    case 'display_name': return (row.display_name || '').toLowerCase();
+    case 'category':     return (row.category || '').toLowerCase(); // '' sorts first ASC
+    case 'status':       return row.is_proposed ? 'proposed' : 'accepted';
+    case 'usage':        return row.usage_count || 0;
+    default:             return '';
+  }
+}
+function _vocabCompare(a, b, col, dir){
+  const ka = _vocabSortKey(a, col), kb = _vocabSortKey(b, col);
+  let c;
+  if(typeof ka === 'number' && typeof kb === 'number'){ c = ka - kb; }
+  else { c = String(ka).localeCompare(String(kb)); }
+  if(c === 0) c = (a.slug || '').localeCompare(b.slug || '');
+  return dir === 'desc' ? -c : c;
+}
+function _refreshSortIndicators(){
+  document.querySelectorAll('#vocabTable thead th.sortable').forEach(th=>{
+    const col = th.dataset.sort;
+    const ind = th.querySelector('.sortInd');
+    th.classList.toggle('sort-active', col === VOCAB_SORT_COL && !!VOCAB_SORT_DIR);
+    if(ind){
+      ind.textContent = (col === VOCAB_SORT_COL)
+        ? (VOCAB_SORT_DIR === 'asc' ? '\u25B2' : VOCAB_SORT_DIR === 'desc' ? '\u25BC' : '')
+        : '';
+    }
+  });
+}
+function vocabRender(){
+  const q = (document.getElementById('vocabSearch')?.value||'').toLowerCase();
+  let rows = TAG_LIST.slice();
+  if(q) rows = rows.filter(r => r.slug.includes(q) || (r.display_name||'').toLowerCase().includes(q));
+  // v0.6 default sort: category ASC, then display_name ASC. Click cycles to
+  // explicit per-column ASC -> DESC -> back to default.
+  if(VOCAB_SORT_COL && VOCAB_SORT_DIR){
+    rows.sort((a,b)=> _vocabCompare(a, b, VOCAB_SORT_COL, VOCAB_SORT_DIR));
+  } else {
+    rows.sort((a,b)=>{
+      const ca = (a.category || '').toLowerCase();
+      const cb = (b.category || '').toLowerCase();
+      if(ca !== cb) return ca.localeCompare(cb);
+      const da = (a.display_name || '').toLowerCase();
+      const db = (b.display_name || '').toLowerCase();
+      if(da !== db) return da.localeCompare(db);
+      return (a.slug || '').localeCompare(b.slug || '');
+    });
+  }
+  _refreshSortIndicators();
+  const body = document.getElementById('vocabBodyRows');
+  // v0.6 Item 8d follow-up C4: Status column + ACCEPT/REJECT removed. Tags
+  // are tags. EDIT and DELETE are the only per-row actions.
+  body.innerHTML = rows.map(r=>{
+    const usage = r.usage_count||0;
+    return `<tr>
+      <td>${usage}</td>
+      <td>${esc(r.category||'')}</td>
+      <td>${esc(r.display_name)}</td>
+      <td><div class="tagActions">
+        <button onclick="openTagEditModal('${esc(r.slug)}')">EDIT</button>
+        <button onclick="tagDelete('${esc(r.slug)}', ${usage})">DELETE</button>
+      </div></td>
+      <td class="slugCol"><code>${esc(r.slug)}</code></td>
+    </tr>`;
+  }).join('');
+  _installVocabColResizers();
+}
+
+// ================= v0.6 Item 6 follow-up: drag-to-resize columns =================
+// Adds a thin col-resize grip at the right edge of each TH. First mousedown
+// puts the component into resizing mode so the sort onclick on the parent TH
+// doesn't fire on the release. Widths live on the <col> elements (table-
+// layout:fixed), so resizing stays in sync between header and body.
+function _installVocabColResizers(){
+  const table = document.getElementById('vocabTable');
+  if(!table) return;
+  const cols = table.querySelectorAll('colgroup > col');
+  const ths  = table.querySelectorAll('thead th');
+  if(!cols.length || !ths.length) return;
+  ths.forEach((th, i) => {
+    if(i >= cols.length) return;
+    if(i === ths.length - 1) return;               // last col: nothing to resize
+    if(th.querySelector('.colGrip')) return;       // already installed
+    const grip = document.createElement('div');
+    grip.className = 'colGrip';
+    th.appendChild(grip);
+    grip.addEventListener('click', e => e.stopPropagation());
+    grip.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const startX = e.pageX;
+      const startW = cols[i].offsetWidth || th.offsetWidth;
+      const onMove = (ev) => {
+        const newW = Math.max(40, startW + (ev.pageX - startX));
+        cols[i].style.width = newW + 'px';
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        // Swallow the click that fires after mouseup so the sort header
+        // doesn't trigger.
+        const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+        th.addEventListener('click', swallow, {capture:true, once:true});
+        setTimeout(() => th.removeEventListener('click', swallow, {capture:true}), 0);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+// =================================================================
+
+async function tagAccept(slug){
+  try{ await api('/api/tag-accept', {slug: slug}); await loadTags(); await loadDb(); vocabRender(); vaultRender(); toast('Accepted','ok'); }
+  catch(e){ toast('Accept failed: '+e.message,'err'); }
+}
+// v0.6 Item 6: unified per-row DELETE. Routes through /api/tag-bulk-delete
+// for a single code path whether the tag has artifacts or not. Uses the
+// in-app modal (not native confirm()) so ESC cancels.
+function tagDelete(slug, usage){
+  const t = TAGS_BY_SLUG[slug] || {};
+  const n = Number(usage)||0;
+  openModal(`
+    <h3>Delete tag?</h3>
+    <div style="font:12px var(--mono);color:var(--text2);margin-bottom:10px;line-height:1.5">
+      <code style="color:var(--gold)">${esc(slug)}</code>
+      ${t.display_name ? ` · ${esc(t.display_name)}` : ''}
+      ${t.category ? ` <span style="color:var(--text2)">(${esc(t.category)})</span>` : ''}
+    </div>
+    <div style="font:12px var(--mono);color:var(--text2);margin-bottom:12px;line-height:1.5">
+      ${n>0
+        ? `It's currently on <strong>${n}</strong> artifact${n===1?'':'s'}; the tag will be stripped from ${n===1?'it':'each of them'}, then the row will be deleted.`
+        : `It isn't attached to any artifacts; the row will be deleted.`}
+      <br><br>This cannot be undone.
+    </div>
+    <div class="actions">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="btnDanger" onclick="_tagDeleteConfirm('${esc(slug)}')">DELETE</button>
+    </div>
+  `);
+}
+async function _tagDeleteConfirm(slug){
+  try{
+    await api('/api/tag-bulk-delete', {slugs:[slug]});
+    await loadTags(); await loadDb(); vocabRender(); vaultRender();
+    closeModal();
+    toast(`Deleted "${slug}"`,'ok');
+  }catch(e){ toast('Delete failed: '+e.message,'err'); }
+}
+function categoryOptionsHtml(selected){
+  // v0.6 Item 8c: 'scope' dropped from the canonical category list; any
+  // existing scope:* rows still appear via the TAG_LIST scan below.
+  const known = ['bands','people','places','content_kind','topic','platform','rarity'];
+  // Include any category seen in current vocab, in case someone has invented a custom one.
+  const seen = new Set(known);
+  TAG_LIST.forEach(t => { if(t.category) seen.add(t.category); });
+  const all = [...seen].sort();
+  return `<option value="">(uncategorized)</option>` +
+    all.map(c => `<option value="${esc(c)}"${c===selected?' selected':''}>${esc(c)}</option>`).join('');
+}
+function openTagCreateModal(){
+  // v0.6 Item 8d follow-up C4: "Mark as proposed" checkbox dropped. Category
+  // is now required by the server — no uncategorized, no proposed.
+  openModal(`
+    <h3>Create pill</h3>
+    <div class="row"><label>Slug</label><input id="mSlug" placeholder="e.g. carsie_blanton"></div>
+    <div class="row"><label>Display name</label><input id="mDisp"></div>
+    <div class="row"><label>Category</label><select id="mCategory">${categoryOptionsHtml('')}</select></div>
+    <div class="row"><label>Description (optional)</label><input id="mDesc"></div>
+    <label class="checkRow"><input type="checkbox" id="mExcl"><span>Exclusive within category (e.g. rarity)</span></label>
+    <div class="actions">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="btnPrimary" onclick="submitTagCreate()">CREATE</button>
+    </div>
+  `);
+}
+async function submitTagCreate(){
+  const slug = slugify(document.getElementById('mSlug').value);
+  const disp = document.getElementById('mDisp').value.trim() || titleCase((slug||'').split(':').pop());
+  const cat = document.getElementById('mCategory').value || null;
+  const excl = document.getElementById('mExcl').checked ? 1 : 0;
+  const desc = document.getElementById('mDesc').value.trim() || null;
+  if(!slug){ toast('Invalid slug','err'); return; }
+  if(!cat){ toast('Category required (no uncategorized tags)','err'); return; }
+  try{
+    await api('/api/tag-create', {slug: slug, display_name: disp, category: cat, is_exclusive: excl, description: desc, is_proposed: 0});
+    await loadTags(); vocabRender(); closeModal(); toast('Created','ok');
+  }catch(e){ toast('Create failed: '+e.message,'err'); }
+}
+// v0.6 Item 6: RENAME + EDIT combined — the single EDIT modal now owns slug,
+// display name, category, exclusive flag, and description in one pass.
+// openTagRenameModal / submitTagRename were removed.
+// v0.6 item 3: dialog shown when a rename hits an existing (slug, category)
+// row — offers to merge the old tag's artifacts into the existing target.
+function openTagMergeOfferModal(oldSlug, offer){
+  const src = TAGS_BY_SLUG[oldSlug] || {};
+  const srcUsage = src.usage_count || 0;
+  const tgtSlug = offer.target_slug;
+  const tgtDisp = offer.target_display_name || tgtSlug;
+  const tgtCat  = offer.target_category || '(uncategorized)';
+  const tgtUse  = offer.target_usage || 0;
+  openModal(`
+    <h3>Slug already in use — merge?</h3>
+    <div style="font:12px var(--mono);color:var(--text2);margin-bottom:10px;line-height:1.5">
+      Can't rename <code style="color:var(--gold)">${esc(oldSlug)}</code> to
+      <code style="color:var(--gold)">${esc(tgtSlug)}</code> because a tag with
+      that slug already exists in category
+      <code style="color:var(--gold)">${esc(tgtCat)}</code>.
+    </div>
+    <div style="font:12px var(--mono);color:var(--text2);margin-bottom:12px;line-height:1.5">
+      Merge <code>${esc(oldSlug)}</code> (${srcUsage} artifact${srcUsage===1?'':'s'})
+      into <code>${esc(tgtSlug)}</code> / "${esc(tgtDisp)}" (${tgtUse} artifact${tgtUse===1?'':'s'})?
+      <br><br>
+      <em>${esc(oldSlug)}</em> will be deleted; every artifact that carried it
+      will instead carry <em>${esc(tgtSlug)}</em>.
+    </div>
+    <div class="actions">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="btnPrimary" onclick="submitTagMergeOffer('${esc(oldSlug)}','${esc(tgtSlug)}')">MERGE</button>
+    </div>
+  `);
+}
+async function submitTagMergeOffer(oldSlug, targetSlug){
+  try{
+    await api('/api/tag-merge', {sources:[oldSlug], target:targetSlug});
+    await loadTags(); await loadDb(); vocabRender(); vaultRender(); closeModal();
+    toast(`Merged "${oldSlug}" into "${targetSlug}"`,'ok');
+  }catch(e){ toast('Merge failed: '+e.message,'err'); }
+}
+function openTagEditModal(slug){
+  const t = TAGS_BY_SLUG[slug] || {};
+  const usage = t.usage_count || 0;
+  openModal(`
+    <h3>Edit pill</h3>
+    <div class="row"><label>Slug</label><input id="mEditSlug" value="${esc(slug)}"></div>
+    <div class="row"><label>Display name</label><input id="mEditDisp" value="${esc(t.display_name||'')}"></div>
+    <div class="row"><label>Category</label><select id="mEditCategory">${categoryOptionsHtml(t.category||'')}</select></div>
+    <div class="row"><label>Description</label><input id="mEditDesc" value="${esc(t.description||'')}"></div>
+    <label class="checkRow"><input type="checkbox" id="mEditExcl"${t.is_exclusive?' checked':''}><span>Exclusive within category (e.g. rarity)</span></label>
+    <div style="font:11px var(--mono);color:var(--text2);margin-top:4px">Changes propagate to all ${usage} artifact${usage===1?'':'s'}.</div>
+    <div class="actions">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="btnPrimary" onclick="submitTagEdit('${esc(slug)}')">SAVE</button>
+    </div>
+  `);
+}
+// v0.6 Item 6: unified edit — sends slug/display/category/excl/description in
+// one call, includes new_slug when the user changed the slug. On 409
+// merge_required (collision in same category), opens the merge-offer dialog
+// from Item 3 so the user can fold old→existing without losing artifacts.
+async function submitTagEdit(oldSlug){
+  const newSlug = slugify(document.getElementById('mEditSlug').value);
+  const disp = document.getElementById('mEditDisp').value.trim();
+  const cat = document.getElementById('mEditCategory').value || null;
+  const excl = document.getElementById('mEditExcl').checked ? 1 : 0;
+  const desc = document.getElementById('mEditDesc').value.trim() || null;
+  if(!newSlug){ toast('Invalid slug','err'); return; }
+  const body = {slug: oldSlug, display_name: disp, category: cat, is_exclusive: excl, description: desc};
+  if(newSlug !== oldSlug) body.new_slug = newSlug;
+  // Fetch inline so we can inspect a 409 merge_required response.
+  let resp, data;
+  try{
+    resp = await fetch(API_BASE + '/api/tag-update', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const txt = await resp.text();
+    try{ data = JSON.parse(txt); } catch(_){ data = {raw: txt}; }
+  }catch(e){ toast('Save failed: '+e.message,'err'); return; }
+  if(resp.ok){
+    await loadTags(); await loadDb(); vocabRender(); vaultRender(); closeModal();
+    toast('Saved','ok');
+    return;
+  }
+  if(resp.status === 409 && data && data.merge_offered){
+    openTagMergeOfferModal(oldSlug, data);
+    return;
+  }
+  toast(`Save failed: ${data && data.error ? data.error : resp.status}`, 'err');
+}
+function openTagRejectModal(slug){
+  const t = TAGS_BY_SLUG[slug] || {};
+  const n = t.usage_count||0;
+  const otherTags = TAG_LIST.filter(x=>x.slug!==slug).sort((a,b)=>a.slug.localeCompare(b.slug));
+  openModal(`
+    <h3>Reject proposed tag</h3>
+    <div style="font:12px var(--mono);color:var(--text2);margin-bottom:10px">Tag "<span style="color:var(--gold)">${esc(slug)}</span>" is on ${n} artifact${n===1?'':'s'}.</div>
+    <div class="row"><label><input type="radio" name="rejectMode" value="remove" checked> Remove from all ${n} artifact${n===1?'':'s'} and delete tag</label></div>
+    <div class="row"><label><input type="radio" name="rejectMode" value="replace"> Replace with another tag, then delete</label></div>
+    <div class="row"><label>Replacement tag (for replace mode)</label>
+      <select id="mReplaceSlug"><option value="">—</option>${otherTags.map(x=>`<option value="${esc(x.slug)}">${esc(x.display_name)} (${esc(x.slug)})</option>`).join('')}</select>
+    </div>
+    <div class="row"><label><input type="radio" name="rejectMode" value="deprecate"> Keep, mark deprecated (leave artifacts alone)</label></div>
+    <div class="actions">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="btnDanger" onclick="submitTagReject('${esc(slug)}')">REJECT</button>
+    </div>
+  `);
+}
+async function submitTagReject(slug){
+  const mode = document.querySelector('input[name=rejectMode]:checked').value;
+  const replacement = document.getElementById('mReplaceSlug').value || null;
+  if(mode==='replace' && !replacement){ toast('Pick a replacement','err'); return; }
+  try{
+    await api('/api/tag-reject', {slug: slug, mode: mode, replacement_slug: replacement});
+    await loadTags(); await loadDb(); vocabRender(); vaultRender(); closeModal(); toast('Rejected ('+mode+')','ok');
+  }catch(e){ toast('Reject failed: '+e.message,'err'); }
+}
+
+// v0.5 — merge one pill into another.
+function openMergeModal(){
+  const used = TAG_LIST.filter(t => (t.usage_count||0) > 0).sort((a,b)=>a.slug.localeCompare(b.slug));
+  const all = TAG_LIST.slice().sort((a,b)=>a.slug.localeCompare(b.slug));
+  const opt = (arr, sel='') => arr.map(t=>`<option value="${esc(t.slug)}"${t.slug===sel?' selected':''}>${esc(t.display_name)} (${esc(t.slug)}) · ${t.usage_count||0}</option>`).join('');
+  openModal(`
+    <h3>Merge pills</h3>
+    <div style="font:11px var(--mono);color:var(--text2);margin-bottom:8px">Move every artifact carrying <em>source</em> onto <em>target</em>, then delete <em>source</em>.</div>
+    <div class="row"><label>Source (will be deleted)</label>
+      <select id="mMergeSrc" onchange="updateMergePreview()"><option value="">—</option>${opt(used)}</select>
+    </div>
+    <div class="row"><label>Target (will gain the artifacts)</label>
+      <select id="mMergeTgt" onchange="updateMergePreview()"><option value="">—</option>${opt(all)}</select>
+    </div>
+    <div id="mMergePreview" style="font:12px var(--mono);color:var(--gold);margin-top:8px"></div>
+    <div class="actions">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="btnPrimary" onclick="submitMerge()">MERGE</button>
+    </div>
+  `);
+}
+function updateMergePreview(){
+  const src = document.getElementById('mMergeSrc').value;
+  const tgt = document.getElementById('mMergeTgt').value;
+  const host = document.getElementById('mMergePreview');
+  if(!src || !tgt){ host.textContent = ''; return; }
+  if(src === tgt){ host.style.color = 'var(--red)'; host.textContent = 'Source and target must differ.'; return; }
+  const s = TAGS_BY_SLUG[src]; const t = TAGS_BY_SLUG[tgt];
+  host.style.color = 'var(--gold)';
+  host.textContent = `${s?.usage_count||0} artifact(s) currently carry "${src}". They will carry "${tgt}" instead, then "${src}" will be deleted.`;
+}
+async function submitMerge(){
+  const src = document.getElementById('mMergeSrc').value;
+  const tgt = document.getElementById('mMergeTgt').value;
+  if(!src || !tgt){ toast('Pick source and target','err'); return; }
+  if(src === tgt){ toast('Source and target must differ','err'); return; }
+  try{
+    await api('/api/tag-merge', {source_slug: src, target_slug: tgt});
+    await loadTags(); await loadDb(); vocabRender(); vaultRender(); closeModal(); toast('Merged','ok');
+  }catch(e){ toast('Merge failed: '+e.message,'err'); }
+}
+
+// v0.6 Item 6 follow-up: bulk-delete was dropped entirely. Per-row DELETE
+// covers the single-tag case (including stripping from all artifacts), and
+// there was no use case for multi-select. The openBulkDeleteModal /
+// submitBulkDelete (v0.5, unused-only) and openVocabDeleteSelectedModal /
+// submitVocabDeleteSelected (v0.6 item 5, selection-driven) handlers are
+// both gone.
+
+// v0.5 — attach-to-parent modal for vault detail.
+function openAttachParentModal(childId){
+  // Walk descendants of childId (must exclude self + descendants).
+  const excluded = new Set([childId]);
+  let frontier = [childId];
+  while(frontier.length){
+    const next = [];
+    for(const pid of frontier){
+      for(const a of ARTIFACTS){
+        if(a.parent_artifact_id === pid && !excluded.has(a.id)){
+          excluded.add(a.id); next.push(a.id);
+        }
+      }
+    }
+    frontier = next;
+  }
+  openModal(`
+    <h3>Attach to parent</h3>
+    <div class="row"><label>Search</label><input id="mAttachSearch" placeholder="id, description, url..." oninput="renderAttachCandidates('${esc(childId)}')"></div>
+    <div class="attachCandidates" id="mAttachList"></div>
+    <div class="actions">
+      <button onclick="closeModal()">CANCEL</button>
+    </div>
+  `);
+  // Stash excluded set for the renderer.
+  window.__attachExcluded = excluded;
+  renderAttachCandidates(childId);
+}
+function renderAttachCandidates(childId){
+  const host = document.getElementById('mAttachList');
+  if(!host) return;
+  const q = (document.getElementById('mAttachSearch')?.value || '').trim().toLowerCase();
+  const excluded = window.__attachExcluded || new Set([childId]);
+  const rows = ARTIFACTS.filter(a => !excluded.has(a.id)).filter(a => {
+    if(!q) return true;
+    const hay = [a.id, a.description_short, a.description_long, a.source_url, a.source_platform].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  }).slice(0, 40);
+  host.innerHTML = rows.length ? rows.map(a => {
+    const thumb = (a.thumbnail_path || a.local_asset_path)
+      ? `<img src="/image-raw?path=${encodeURIComponent(a.thumbnail_path || a.local_asset_path)}" onerror="this.style.visibility='hidden'">`
+      : `<div style="width:48px;height:48px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--text2);font:9px var(--mono)">${esc(a.media_type||'')}</div>`;
+    return `<div class="attachCand" onclick="attachParentTo('${esc(childId)}','${esc(a.id)}')">
+      ${thumb}
+      <div class="ci">
+        <div class="cid">${esc(a.id)}</div>
+        <div class="csh">${esc(a.description_short||'')}</div>
+        <div class="cm">${esc(a.source_platform||'')} · ${esc(fmtDate(a.post_date))}</div>
+      </div>
+    </div>`;
+  }).join('') : `<div style="padding:10px;color:var(--text2);font:12px var(--mono)">No matches</div>`;
+}
+async function attachParentTo(childId, parentId){
+  try{
+    await api('/api/artifact-update', {id: childId, fields: {parent_artifact_id: parentId}});
+    await loadDb(); vaultRender(); closeModal(); toast(`Attached to ${parentId}`, 'ok');
+  }catch(e){ toast('Attach failed: ' + e.message, 'err'); }
+}
+async function detachParent(childId){
+  if(!confirm('Detach from parent?')) return;
+  try{
+    await api('/api/artifact-update', {id: childId, fields: {parent_artifact_id: null}});
+    await loadDb(); vaultRender(); toast('Detached', 'ok');
+  }catch(e){ toast('Detach failed: ' + e.message, 'err'); }
+}
+function openModal(html){
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('open'); }
+document.getElementById('modalBg').addEventListener('click', (e)=>{
+  if(e.target===e.currentTarget) closeModal();
+});
+// v0.6 Item 6: ESC cancels any open in-app modal.
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Escape') return;
+  const bg = document.getElementById('modalBg');
+  if(bg && bg.classList.contains('open')){
+    e.preventDefault();
+    closeModal();
+  }
+});
+// v0.6 Item 8: keyboard up/down moves the vault row selection. Only active
+// when (a) the vault tab is the active pane, (b) no modal is open, (c) the
+// user isn't typing in an input/textarea (so the search box keeps its normal
+// caret behaviour). Works for both table and grid view — we just walk the
+// current VAULT_VISIBLE_IDS list. If nothing is selected yet, arrow-down
+// selects the first row, arrow-up selects the last.
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  const vaultPane = document.getElementById('vaultPane');
+  if(!vaultPane || !vaultPane.classList.contains('active')) return;
+  const bg = document.getElementById('modalBg');
+  if(bg && bg.classList.contains('open')) return;
+  const tag = (e.target && e.target.tagName || '').toUpperCase();
+  if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if(!VAULT_VISIBLE_IDS.length) return;
+  const idx = CURRENT_ARTIFACT_ID ? VAULT_VISIBLE_IDS.indexOf(CURRENT_ARTIFACT_ID) : -1;
+  let nextIdx;
+  if(e.key === 'ArrowDown'){
+    nextIdx = (idx < 0) ? 0 : Math.min(VAULT_VISIBLE_IDS.length - 1, idx + 1);
+  } else {
+    nextIdx = (idx < 0) ? VAULT_VISIBLE_IDS.length - 1 : Math.max(0, idx - 1);
+  }
+  if(nextIdx === idx) return;
+  e.preventDefault();
+  selectArtifact(VAULT_VISIBLE_IDS[nextIdx]);
+  // Scroll the newly-selected row into view in the table.
+  const tr = document.querySelector(`#vaultTableBody tr[data-id="${VAULT_VISIBLE_IDS[nextIdx]}"]`);
+  if(tr && tr.scrollIntoView) tr.scrollIntoView({block:'nearest'});
+});
+
+// ==================== SERVER HEALTH (v0.6 item 5) ====================
+// Alert badge stays hidden while /ping is healthy. After 2 consecutive
+// failures it flips visible; recovers the moment /ping returns 200. Click
+// the badge to force an immediate re-check.
+let _SRV_FAILURES = 0;
+async function _srvHealthTick(){
+  try{
+    const r = await fetch(API_BASE + '/ping', {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    _SRV_FAILURES = 0;
+    _srvSetAlert(false, '');
+  }catch(e){
+    _SRV_FAILURES++;
+    if(_SRV_FAILURES >= 2){
+      _srvSetAlert(true,
+        `Server not responding (${_SRV_FAILURES} failed check${_SRV_FAILURES===1?'':'s'}). Click to retry.`);
+    }
+  }
+}
+function _srvSetAlert(bad, tip){
+  const el = document.getElementById('srvAlert');
+  if(!el) return;
+  el.classList.toggle('visible', !!bad);
+  if(tip) el.title = tip;
+}
+setInterval(_srvHealthTick, 20000);  // poll every 20s while page is open
+
+// ==================== STARTUP ====================
+// v0.6 Item 8d follow-up C1/C2: loadTags() MUST run before loadQueue()/loadDb()
+// triggers any inbox or vault render. If the pill wall renders while TAG_LIST
+// is empty, every currently-set slug falls into the __uncategorized__ ghost
+// bucket (because TAGS_BY_SLUG[slug] is undefined) and the accumulated view
+// shows (0) even though states exist. On a subsequent pill click, the wall
+// re-renders from the same empty TAG_LIST and the just-clicked pill has
+// nowhere to show up — looks like it vanished. Load vocab first.
+async function startup(){
+  _srvHealthTick();   // prime the alert-badge state
+  SQL = await initSqlJs({locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/'+f});
+  await loadTags();   // vocab first — pill wall depends on TAG_LIST/TAGS_BY_SLUG
+  await loadDb();
+  await loadQueue();
+}
+startup();
+</script>
+</body></html>

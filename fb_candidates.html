@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FB Candidates — Weird.Baby</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0e0e0e; --bg2:#161616; --bg3:#1e1e1e; --bg4:#252525;
+  --gold:#C9A84C; --gold2:#a8882e;
+  --text:#e0e0e0; --text2:#888; --text3:#444;
+  --red:#c44; --green:#4a4; --blue:#6af; --border:#2a2a2a;
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:14px/1.5 var(--sans);}
+
+/* ── TOP BAR ── */
+#topBar{
+  position:fixed;top:0;left:0;right:0;height:44px;z-index:100;
+  display:flex;align-items:center;
+  background:var(--bg2);border-bottom:2px solid var(--gold);padding:0 16px;gap:0;
+}
+.logo{font:600 13px var(--mono);color:var(--gold);white-space:nowrap;letter-spacing:.02em;margin-right:4px;}
+.logo em{color:var(--text3);font-style:normal;font-weight:400;}
+
+#filterGroup{display:flex;margin-left:14px;}
+.filt{
+  padding:0 13px;height:44px;font:600 11px var(--mono);background:none;
+  border:none;border-bottom:2px solid transparent;margin-bottom:-2px;
+  color:var(--text2);cursor:pointer;letter-spacing:.05em;
+}
+.filt:hover{color:var(--text);}
+.filt.on{color:var(--gold);border-bottom-color:var(--gold);}
+
+.topSpacer{flex:1;}
+#statusBar{font:11px var(--mono);color:var(--text3);margin-right:14px;}
+#statusBar b{color:var(--gold);font-weight:600;}
+#exportBtn{
+  padding:5px 14px;background:var(--gold);color:#111;
+  font:600 11px var(--mono);border:none;border-radius:3px;cursor:pointer;margin-right:10px;
+}
+#exportBtn:hover{background:var(--gold2);}
+#bmLink{font:11px var(--mono);color:var(--text3);cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+#bmLink:hover{color:var(--text2);}
+
+/* ── BOOKMARKLET DRAWER ── */
+#bmDrawer{
+  display:none;position:fixed;top:44px;right:0;z-index:200;
+  background:var(--bg2);border:1px solid var(--border);border-top:none;
+  border-radius:0 0 0 6px;padding:16px 20px;width:340px;
+}
+#bmDrawer.on{display:block;}
+#bmDrawer p{font:12px var(--sans);color:var(--text2);line-height:1.7;margin-bottom:12px;}
+.bm-anchor{display:inline-block;padding:8px 18px;background:var(--gold);color:#111;font:600 11px var(--mono);border-radius:3px;text-decoration:none;cursor:grab;user-select:none;}
+.bm-hint{margin-top:8px;font:10px var(--mono);color:var(--text3);line-height:1.8;}
+#bmClose{float:right;background:none;border:none;color:var(--text3);cursor:pointer;font:13px var(--mono);margin-top:-2px;}
+#bmClose:hover{color:var(--text);}
+
+/* ── MAIN LAYOUT ── */
+#reviewPane{
+  position:fixed;top:44px;left:0;right:0;bottom:0;
+  display:flex;background:var(--bg);
+}
+
+/* LEFT */
+#colLeft{
+  width:240px;flex-shrink:0;border-right:1px solid var(--border);
+  display:flex;flex-direction:column;padding:14px;gap:11px;
+}
+
+#progWrap{display:flex;align-items:center;gap:8px;}
+#progBar{flex:1;height:2px;background:var(--bg4);border-radius:1px;}
+#progFill{height:100%;background:var(--gold);border-radius:1px;transition:width .25s;}
+#progLbl{font:11px var(--mono);color:var(--text3);white-space:nowrap;}
+
+#viewBtn{
+  width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);
+  color:var(--blue);font:700 11px var(--mono);border-radius:4px;cursor:pointer;letter-spacing:.04em;
+}
+#viewBtn:hover{border-color:var(--blue);}
+
+.lbl{font:600 10px var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;}
+
+#dateInput{
+  width:100%;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);font:13px var(--mono);padding:6px 9px;border-radius:4px;
+}
+#dateInput:focus{outline:none;border-color:var(--gold);}
+
+.ta{
+  width:100%;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);font:13px var(--sans);padding:7px 9px;border-radius:4px;
+  resize:none;line-height:1.5;
+}
+.ta:focus{outline:none;border-color:var(--gold);}
+#factInput{height:68px;}
+#noteInput{height:54px;}
+
+.field-spacer{flex:1;}
+
+#actGroup{display:flex;flex-direction:column;gap:6px;}
+.act{
+  width:100%;padding:10px 0;font:700 13px var(--mono);border-radius:4px;
+  cursor:pointer;border:1px solid transparent;letter-spacing:.05em;
+}
+#btnAccept{background:#1a3a1a;color:#6d6;border-color:#3a6a3a;}
+#btnAccept:hover{background:#224a22;}
+#btnSkip{background:var(--bg3);color:var(--text2);border-color:var(--border);}
+#btnSkip:hover{color:var(--text);border-color:var(--text3);}
+#btnReject{background:#2a1a1a;color:#a66;border-color:#6a3a3a;}
+#btnReject:hover{background:#3a2020;}
+#btnSendInbox{background:var(--gold);color:#111;border-color:var(--gold2);}
+#btnSendInbox:hover:not(:disabled){background:var(--gold2);}
+#btnSendInbox:disabled{background:var(--bg3);color:var(--text3);border-color:var(--border);cursor:not-allowed;}
+#btnSendInbox.hidden{display:none;}
+
+/* CENTER */
+#colCenter{
+  flex:1;overflow-y:auto;padding:14px 16px;
+  display:flex;flex-direction:column;gap:14px;
+}
+
+.pill-section{display:flex;flex-direction:column;gap:5px;}
+.pill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.pill-grid.wide{grid-template-columns:repeat(4,1fr);}
+
+.pill{
+  padding:6px 4px;text-align:center;
+  border-radius:4px;font:600 11px var(--mono);cursor:pointer;
+  border:1px solid var(--border);background:var(--bg3);color:var(--text2);
+  transition:all .08s;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pill:hover{color:var(--text);border-color:var(--text3);}
+.pill.on{color:#111 !important;border-color:transparent !important;}
+.pill.era.on{background:var(--gold);}
+.pill.what.on{background:#1e3a5a;color:#8cf !important;border-color:#3a6aaa !important;}
+.pill.who.on{background:#1a3a1a;color:#8d8 !important;border-color:#3a6a3a !important;}
+.pill.feel.on{background:#2a1a4a;color:#baf !important;border-color:#5a3a9a !important;}
+.pill.signal.on{background:#3a1a1a;color:#f99 !important;border-color:#7a3a3a !important;}
+
+/* empty */
+#emptyMsg{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;pointer-events:none;display:none;
+}
+#emptyMsg strong{display:block;font:600 15px var(--sans);color:var(--text2);margin-bottom:6px;}
+#emptyMsg p{font:12px var(--sans);color:var(--text3);}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);padding:8px 20px;border-radius:4px;font:12px var(--mono);z-index:9999;animation:fup .2s;pointer-events:none;}
+.toast.ok{background:#1a3a1a;color:#6d6;border:1px solid #3a6a3a;}
+.toast.err{background:#3a1a1a;color:#f88;border:1px solid #7a3a3a;}
+@keyframes fup{from{opacity:0;transform:translateX(-50%) translateY(5px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+</style>
+</head>
+<body>
+
+<div id="topBar">
+  <span class="logo">FB CANDIDATES <em>// weird.baby</em></span>
+  <div id="filterGroup">
+    <button class="filt on" onclick="setFilter('candidate',this)">Pending</button>
+    <button class="filt"    onclick="setFilter('accepted',this)">Accepted</button>
+    <button class="filt"    onclick="setFilter('all',this)">All</button>
+  </div>
+  <span class="topSpacer"></span>
+  <span id="statusBar"></span>
+  <button id="exportBtn" onclick="exportAccepted()">Export →</button>
+  <span id="bmLink" onclick="toggleBm()">bookmarklet</span>
+</div>
+
+<!-- BOOKMARKLET DRAWER -->
+<div id="bmDrawer">
+  <button id="bmClose" onclick="toggleBm()">✕</button>
+  <p>Drag the button to your bookmarks bar. On any Facebook post, one click captures the URL instantly.</p>
+  <a class="bm-anchor" id="bm" href="#">📌 WB Capture</a>
+  <div class="bm-hint">↑ Drag to bookmarks bar — do not click here.</div>
+</div>
+
+<!-- REVIEW -->
+<div id="reviewPane">
+
+  <div id="emptyMsg">
+    <strong>Queue empty</strong>
+    <p>Nothing here. Switch filter or capture more posts.</p>
+  </div>
+
+  <!-- LEFT -->
+  <div id="colLeft">
+    <div id="progWrap">
+      <div id="progBar"><div id="progFill" style="width:0%"></div></div>
+      <span id="progLbl"></span>
+    </div>
+
+    <button id="viewBtn" onclick="openPost()">↗ Open Post</button>
+
+    <div>
+      <div class="lbl">Date</div>
+      <input type="text" id="dateInput" placeholder="YYYY-MM-DD" autocomplete="off">
+    </div>
+
+    <div>
+      <div class="lbl">Fact <span style="color:var(--text3);font-weight:400;font-size:9px;">→ archive</span></div>
+      <textarea class="ta" id="factInput" placeholder="One clean sentence for the archive…"></textarea>
+    </div>
+
+    <div>
+      <div class="lbl">Note <span style="color:var(--text3);font-weight:400;font-size:9px;">internal</span></div>
+      <textarea class="ta" id="noteInput" placeholder="Scratch notes…"></textarea>
+    </div>
+
+    <div class="field-spacer"></div>
+
+    <div id="actGroup">
+      <button class="act" id="btnAccept" onclick="action('accepted')">✓ Accept</button>
+      <button class="act" id="btnSkip"   onclick="action('skip')">→ Skip</button>
+      <button class="act" id="btnReject" onclick="action('rejected')">✕ Reject</button>
+      <button class="act hidden" id="btnSendInbox" onclick="sendToInbox()">→ Send to MediaVault Inbox</button>
+    </div>
+  </div>
+
+  <!-- CENTER: pills -->
+  <div id="colCenter"></div>
+
+</div>
+
+<script>
+const SRV = 'http://127.0.0.1:51822';
+let _cache=[], _queue=[], _idx=0, _filter='candidate', _fbWin=null;
+
+const PILLS = [
+  { key:'era',    label:'Era',     exclusive:true,
+    items:['Seeds','Medusas-Disco','Solo'] },
+  { key:'what',   label:'What Is It', exclusive:false,
+    items:['Release','Show','Announcement','Interview','Milestone','Collab','Cover','Media','Merch','Fan-Moment','Personal'] },
+  { key:'who',    label:'Who',     exclusive:false,
+    items:['Hunter','Band','Other-Artist','Fan','Venue','Label'] },
+  { key:'feel',   label:'Feel',    exclusive:false,
+    items:['Celebratory','Reflective','Candid','Behind-The-Scenes'] },
+  { key:'signal', label:'Signal',  exclusive:false,
+    items:['First','Only','Rare'] },
+];
+
+/* build pill DOM once */
+(function(){
+  const center = document.getElementById('colCenter');
+  PILLS.forEach(cfg => {
+    const sec = document.createElement('div');
+    sec.className = 'pill-section';
+    const lbl = document.createElement('div');
+    lbl.className = 'lbl';
+    lbl.textContent = cfg.label;
+    sec.appendChild(lbl);
+    const grid = document.createElement('div');
+    // 4-col for larger groups, 3-col for small
+    grid.className = 'pill-grid' + (cfg.items.length > 6 ? ' wide' : '');
+    grid.id = 'pg-'+cfg.key;
+    cfg.items.forEach(val => {
+      const p = document.createElement('span');
+      p.className = `pill ${cfg.key}`;
+      p.dataset.group = cfg.key;
+      p.dataset.val = val.toLowerCase();
+      p.dataset.exclusive = cfg.exclusive;
+      p.textContent = val;
+      p.title = val;
+      p.addEventListener('click', () => togglePill(p));
+      grid.appendChild(p);
+    });
+    sec.appendChild(grid);
+    center.appendChild(sec);
+  });
+})();
+
+function togglePill(el){
+  if(el.dataset.exclusive==='true')
+    document.querySelectorAll(`.pill[data-group="${el.dataset.group}"]`).forEach(p=>p.classList.remove('on'));
+  el.classList.toggle('on');
+}
+function clearPills(){ document.querySelectorAll('.pill.on').forEach(p=>p.classList.remove('on')); }
+function setPills(tags){
+  clearPills();
+  if(!tags) return;
+  Object.entries(tags).forEach(([g,v])=>{
+    (Array.isArray(v)?v:[v]).forEach(val=>{
+      const p=document.querySelector(`.pill[data-group="${g}"][data-val="${val.toLowerCase()}"]`);
+      if(p) p.classList.add('on');
+    });
+  });
+}
+function collectPills(){
+  const tags={};
+  PILLS.forEach(cfg=>{
+    const active=[...document.querySelectorAll(`.pill[data-group="${cfg.key}"].on`)].map(p=>p.dataset.val);
+    if(active.length) tags[cfg.key]=cfg.exclusive?active[0]:active;
+  });
+  return tags;
+}
+
+/* ── DATA ── */
+async function load(){
+  try{ const r=await fetch(SRV+'/api/fb-candidates'); _cache=r.ok?await r.json():[]; }
+  catch(e){ _cache=[]; }
+  updateStatus(); buildQueue();
+}
+
+async function persist(item){
+  try{
+    const r=await fetch(SRV+'/api/fb-candidates',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'update',item})
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const i=_cache.findIndex(x=>x.id===item.id);
+    if(i>=0) _cache[i]=item; else _cache.push(item);
+    updateStatus(); return true;
+  } catch(e){ toast('Save failed: '+e.message,false); return false; }
+}
+
+function updateStatus(){
+  const p=_cache.filter(x=>x.status==='candidate').length;
+  const a=_cache.filter(x=>x.status==='accepted').length;
+  document.getElementById('statusBar').innerHTML=`<b>${p}</b> pending &nbsp;·&nbsp; <b>${a}</b> accepted &nbsp;&nbsp;`;
+}
+
+/* ── QUEUE ── */
+function buildQueue(){
+  _queue=_filter==='all'?[..._cache]:_cache.filter(x=>x.status===_filter);
+  _idx=0; renderCard();
+}
+function setFilter(f,el){
+  _filter=f;
+  document.querySelectorAll('.filt').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  buildQueue();
+}
+
+/* ── CARD ── */
+function setVisible(v){
+  document.getElementById('colLeft').style.visibility=v?'visible':'hidden';
+  document.getElementById('colCenter').style.visibility=v?'visible':'hidden';
+}
+
+function renderCard(){
+  const empty=document.getElementById('emptyMsg');
+  if(!_queue.length||_idx>=_queue.length){
+    empty.style.display='block'; setVisible(false);
+    document.getElementById('progLbl').textContent='';
+    document.getElementById('progFill').style.width='0%';
+    return;
+  }
+  empty.style.display='none'; setVisible(true);
+
+  const pct=_queue.length>1?Math.round((_idx/(_queue.length-1))*100):100;
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('progLbl').textContent=`${_idx+1} / ${_queue.length}`;
+
+  const d=_queue[_idx];
+  document.getElementById('dateInput').value=d.date||'';
+  document.getElementById('factInput').value=d.fact||'';
+  document.getElementById('noteInput').value=d.notes||'';
+  let tags={}; try{tags=d.tags?JSON.parse(d.tags):{};}catch(e){}
+  setPills(tags);
+  updateSendInboxBtn(d);
+}
+
+function updateSendInboxBtn(d){
+  const btn = document.getElementById('btnSendInbox');
+  if(!btn) return;
+  if(d && d.status === 'accepted'){
+    btn.classList.remove('hidden');
+    if(d.graduated){
+      btn.disabled = true;
+      btn.textContent = '✓ Sent to MediaVault';
+    } else {
+      btn.disabled = false;
+      btn.textContent = '→ Send to MediaVault Inbox';
+    }
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+async function sendToInbox(){
+  if(!_queue.length || _idx >= _queue.length) return;
+  const d = _queue[_idx];
+  if(!d || d.status !== 'accepted'){ toast('Candidate must be accepted first', false); return; }
+  if(d.graduated){ toast('Already sent to MediaVault', false); return; }
+  const btn = document.getElementById('btnSendInbox');
+  btn.disabled = true;
+  btn.textContent = '…sending…';
+  try{
+    const r = await fetch(SRV + '/api/intake-from-fb-candidate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({fb_candidate_id: d.id})
+    });
+    if(!r.ok){ throw new Error('HTTP ' + r.status + ': ' + (await r.text()).slice(0,200)); }
+    const resp = await r.json();
+    d.graduated = true;
+    const i = _cache.findIndex(x => x.id === d.id);
+    if(i >= 0) _cache[i] = d;
+    updateSendInboxBtn(d);
+    toast(`Sent to MediaVault (queue #${resp.queue_id})`);
+  } catch(e){
+    btn.disabled = false;
+    btn.textContent = '→ Send to MediaVault Inbox';
+    toast('Send failed: ' + e.message, false);
+  }
+}
+
+function collectCard(){
+  const d=_queue[_idx];
+  d.date =document.getElementById('dateInput').value.trim();
+  d.fact =document.getElementById('factInput').value.trim();
+  d.notes=document.getElementById('noteInput').value.trim();
+  d.tags =JSON.stringify(collectPills());
+  return d;
+}
+
+async function action(type){
+  if(!_queue.length||_idx>=_queue.length) return;
+  if(type==='skip'){ _idx++; renderCard(); autoOpen(); return; }
+  const d=collectCard();
+  d.status=type;
+  await persist(d);
+  _queue.splice(_idx,1);
+  if(_idx>=_queue.length) _idx=Math.max(0,_queue.length-1);
+  renderCard();
+  autoOpen();
+  toast(type==='accepted'?'Accepted ✓':'Rejected');
+}
+
+function autoOpen(){
+  if(_queue.length&&_idx<_queue.length&&_queue[_idx].url) openPost();
+}
+
+function openPost(){
+  if(!_queue.length||_idx>=_queue.length) return;
+  const url=_queue[_idx].url; if(!url) return;
+  const w=Math.floor(screen.availWidth*0.48);
+  const h=screen.availHeight-60;
+  const left=screen.availWidth-w;
+  if(_fbWin&&!_fbWin.closed){_fbWin.location.href=url;_fbWin.focus();}
+  else _fbWin=window.open(url,'fb_review',`width=${w},height=${h},left=${left},top=0,menubar=no,toolbar=no,location=yes`);
+}
+
+/* ── EXPORT ── */
+async function exportAccepted(){
+  const acc=_cache.filter(d=>d.status==='accepted');
+  if(!acc.length) return toast('No accepted candidates',false);
+  const lines=acc.map(d=>{
+    let tags={}; try{tags=d.tags?JSON.parse(d.tags):{};}catch(e){}
+    const era=(tags.era||d.era||'solo').toLowerCase();
+    const fact=(d.fact||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+    return `{\n  date: "${d.date||''}",\n  era: "${era}",\n  src: "fb",\n  type: "historical",\n  fact1: "${fact}",\n  postUrl: "${d.url||''}",\n  color: "#12101a",\n  icon: "📘",\n},`;
+  });
+  const out=`// FB EMBEDS — exported ${new Date().toISOString().slice(0,10)} — ${acc.length} entries\n\n`+lines.join('\n\n');
+  try{ await navigator.clipboard.writeText(out); }
+  catch(e){ const ta=document.createElement('textarea');ta.value=out;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove(); }
+  toast(`${acc.length} entries copied to clipboard`);
+}
+
+/* ── BOOKMARKLET ── */
+function toggleBm(){
+  document.getElementById('bmDrawer').classList.toggle('on');
+}
+(function(){
+  const c=`(function(){var u=location.href;if(!u.includes('facebook.com'))return;var p=new URLSearchParams({url:u,slug:u.match(/facebook\\.com\\/([^/?#]+)/)?.[1]||'',captured:new Date().toISOString()});window.open('http://127.0.0.1:51822/fb-capture?'+p.toString(),'_blank','width=300,height=180,menubar=no,toolbar=no');})();`;
+  document.getElementById('bm').href='javascript:'+encodeURIComponent(c);
+})();
+
+/* ── KEYS ── */
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(e.key==='a'||e.key==='A') action('accepted');
+  if(e.key==='r'||e.key==='R') action('rejected');
+  if(e.key==='s'||e.key==='S'||e.key===' '){e.preventDefault();action('skip');}
+  if(e.key==='o'||e.key==='O') openPost();
+  if(e.key==='Escape') document.getElementById('bmDrawer').classList.remove('on');
+});
+
+/* ── UTILS ── */
+function toast(msg,ok=true){const d=document.createElement('div');d.className='toast '+(ok===false?'err':'ok');d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),2400);}
+
+load();
+</script>
+</body>
+</html>

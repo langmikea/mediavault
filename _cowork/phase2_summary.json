@@ -1,0 +1,345 @@
+{
+  "merges": [
+    {
+      "n": 1,
+      "source": "hunter",
+      "target": "hunter_root",
+      "artifacts_touched": 31,
+      "target_usage_preview": 77,
+      "source_vocab_deleted": true,
+      "reason": "same person, fragmented"
+    },
+    {
+      "n": 2,
+      "source": "medusasdisco",
+      "target": "medusas_disco",
+      "artifacts_touched": 6,
+      "target_usage_preview": 7,
+      "source_vocab_deleted": true,
+      "reason": "stem dup (canon = spaced form)"
+    },
+    {
+      "n": 3,
+      "source": "runwiththehunt",
+      "target": "run_with_the_hunt",
+      "artifacts_touched": 33,
+      "target_usage_preview": 33,
+      "source_vocab_deleted": true,
+      "reason": "stem dup (target created just-in-time)"
+    },
+    {
+      "n": 4,
+      "source": "pre_solo_run_with_the_hunt",
+      "target": "run_with_the_hunt",
+      "artifacts_touched": 33,
+      "target_usage_preview": 33,
+      "source_vocab_deleted": true,
+      "reason": "provenance-as-tag"
+    },
+    {
+      "n": 5,
+      "source": "pre_solo_medusas_disco",
+      "target": "medusas_disco",
+      "artifacts_touched": 6,
+      "target_usage_preview": 7,
+      "source_vocab_deleted": true,
+      "reason": "provenance-as-tag"
+    },
+    {
+      "n": 6,
+      "source": "hunterroot2",
+      "target": "hunter_root",
+      "artifacts_touched": 2,
+      "target_usage_preview": 77,
+      "source_vocab_deleted": true,
+      "reason": "duplicate handle reference"
+    },
+    {
+      "n": 7,
+      "source": "audio_audio_file",
+      "target": "audio",
+      "artifacts_touched": 15,
+      "target_usage_preview": 28,
+      "source_vocab_deleted": true,
+      "reason": "ingest-provenance leakage"
+    },
+    {
+      "n": 8,
+      "source": "audio_metadata_json",
+      "target": "audio",
+      "artifacts_touched": 13,
+      "target_usage_preview": 28,
+      "source_vocab_deleted": true,
+      "reason": "ingest-provenance leakage"
+    },
+    {
+      "n": 9,
+      "source": "mp3_only",
+      "target": "audio",
+      "artifacts_touched": 26,
+      "target_usage_preview": 28,
+      "source_vocab_deleted": true,
+      "reason": "phase-2 workflow marker"
+    },
+    {
+      "n": 10,
+      "source": "reverbnation_artist_page_metadata_json",
+      "target": "reverbnation",
+      "artifacts_touched": 3,
+      "target_usage_preview": 40,
+      "source_vocab_deleted": true,
+      "reason": "composite slug from ingest"
+    },
+    {
+      "n": 11,
+      "source": "reverbnation_artist_page_page_save_html",
+      "target": "reverbnation",
+      "artifacts_touched": 3,
+      "target_usage_preview": 40,
+      "source_vocab_deleted": true,
+      "reason": "composite slug from ingest"
+    },
+    {
+      "n": 12,
+      "source": "reverbnation_song_page_lyrics_txt",
+      "target": "reverbnation",
+      "artifacts_touched": 2,
+      "target_usage_preview": 40,
+      "source_vocab_deleted": true,
+      "reason": "composite slug from ingest"
+    },
+    {
+      "n": 13,
+      "source": "reverbnation_song_page_metadata_json",
+      "target": "reverbnation",
+      "artifacts_touched": 2,
+      "target_usage_preview": 40,
+      "source_vocab_deleted": true,
+      "reason": "composite slug from ingest"
+    },
+    {
+      "n": 14,
+      "source": "reverbnation_song_page_page_save_html",
+      "target": "reverbnation",
+      "artifacts_touched": 2,
+      "target_usage_preview": 40,
+      "source_vocab_deleted": true,
+      "reason": "composite slug from ingest"
+    }
+  ],
+  "deletions": [
+    {
+      "slug": "standard",
+      "artifacts_touched": 76,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "critical",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "2019",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "2022",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "2023",
+      "artifacts_touched": 4,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "2024",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "2025",
+      "artifacts_touched": 21,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "2026",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "striped_shirt",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "long_hair",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "brick_wall",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "brick_wall_background",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "original_music",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "town_rat_heathen",
+      "artifacts_touched": 3,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "quicksand_sinking",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "dreaming_up_ways_of_gettin_outta_this_hellhole",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "hellhole_perspective_rubble_lyrics",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "my_brothers_bones",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "crooked_home",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "rock",
+      "artifacts_touched": 7,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "acoustic",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "jam",
+      "artifacts_touched": 5,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "grunge",
+      "artifacts_touched": 5,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "psychedelic",
+      "artifacts_touched": 5,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "blues",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "singer_songwriter",
+      "artifacts_touched": 3,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "acoustic_rock",
+      "artifacts_touched": 5,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "psychedelic_rock",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "indiefolk",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "alternative",
+      "artifacts_touched": 5,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "show",
+      "artifacts_touched": 21,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "song",
+      "artifacts_touched": 2,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "performance",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "quote",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "lyric",
+      "artifacts_touched": 1,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "venue",
+      "artifacts_touched": 11,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "phase2_recovery",
+      "artifacts_touched": 26,
+      "vocab_deleted": true
+    },
+    {
+      "slug": "mp3_only",
+      "artifacts_touched": 0,
+      "vocab_deleted": false
+    }
+  ],
+  "creates": [
+    {
+      "slug": "seeds",
+      "category": "bands"
+    },
+    {
+      "slug": "music_video",
+      "category": "content_kind"
+    },
+    {
+      "slug": "fan_art",
+      "category": "content_kind"
+    },
+    {
+      "slug": "memorabilia",
+      "category": "content_kind"
+    }
+  ],
+  "skipped_creates": [
+    "run_with_the_hunt"
+  ],
+  "pre_tag_count": 109,
+  "post_tag_count": 63
+}

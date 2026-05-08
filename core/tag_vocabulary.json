@@ -1,0 +1,88 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "source_of_truth": "C:\\AI\\Platform\\MediaVault\\core\\tag_vocabulary.json",
+    "note": "This file governs all controlled tag categories. UI and ingest engine both read from here. Do not add ad-hoc tags — extend this file instead."
+  },
+  "domains": ["hunter_root", "genealogy", "personal"],
+  "tag_categories": {
+    "year_era": {
+      "label": "Year / Era",
+      "multi": true,
+      "values": [
+        "2012", "2013", "2014", "2015", "2016", "2017", "2018",
+        "2019", "2020", "2021", "2022", "2023", "2024", "2025",
+        "era-unknown"
+      ]
+    },
+    "content_type": {
+      "label": "Content Type",
+      "multi": true,
+      "values": [
+        "song", "interview", "press", "live-show", "rehearsal",
+        "artwork", "poster", "merch", "tour-announcement", "milestone"
+      ]
+    },
+    "song_reference": {
+      "label": "Song Reference",
+      "multi": true,
+      "freetext": true,
+      "note": "Song title exactly as known (e.g. Twisted Dentist, Atomic 7, Breed)"
+    },
+    "release_stage": {
+      "label": "Release Stage",
+      "multi": true,
+      "values": [
+        "released", "pre-release", "early-version", "demo", "cover-song"
+      ]
+    },
+    "subject": {
+      "label": "Subject",
+      "multi": true,
+      "values": [
+        "hunter", "nick-root", "band", "solo", "fan", "venue", "crowd"
+      ]
+    },
+    "topic": {
+      "label": "Topic",
+      "multi": true,
+      "values": [
+        "lyme-disease", "personal", "family", "tour", "show",
+        "new-music", "gear", "merch"
+      ]
+    },
+    "rarity": {
+      "label": "Rarity",
+      "multi": false,
+      "values": ["common", "notable", "rare", "unique"]
+    },
+    "preservation": {
+      "label": "Preservation",
+      "multi": false,
+      "values": ["standard", "flag-preserve"]
+    },
+    "permission": {
+      "label": "Permission",
+      "multi": false,
+      "values": [
+        "not-required", "not-requested", "requested", "granted", "denied"
+      ]
+    }
+  },
+  "id_format": {
+    "pattern": "MV-{domain_prefix}-{YYYYMMDD}-{seq}",
+    "domain_prefixes": {
+      "hunter_root": "HR",
+      "genealogy": "GN",
+      "personal": "PE"
+    },
+    "example": "MV-HR-20261015-001"
+  },
+  "thumbnail": {
+    "format": "JPEG",
+    "max_longest_edge_px": 400,
+    "quality": 85,
+    "storage_path": "C:\\AI\\Platform\\MediaVault\\catalogs\\{domain}\\_thumbs\\",
+    "filename_pattern": "{record_id}.jpg"
+  }
+}

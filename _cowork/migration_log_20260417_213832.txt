@@ -1,0 +1,11 @@
+[migrate] ERROR (rolled back): disk I/O error
+[migrate] DB: /sessions/gallant-vibrant-newton/mnt/AI/Platform/MediaVault/core/mediavault.sqlite
+[migrate] Snapshot: /sessions/gallant-vibrant-newton/mnt/AI/Platform/MediaVault/_cowork/pre_refactor_snapshot.json
+[migrate] Backup created: mediavault.sqlite.bak_v04phase1_20260417_213832
+[migrate] Creating v4 tables...
+Traceback (most recent call last):
+  File "/sessions/gallant-vibrant-newton/mnt/AI/Platform/MediaVault/core/migrate_to_v04.py", line 573, in <module>
+    main()
+  File "/sessions/gallant-vibrant-newton/mnt/AI/Platform/MediaVault/core/migrate_to_v04.py", line 224, in main
+    cur.executescript("""
+sqlite3.OperationalError: disk I/O error

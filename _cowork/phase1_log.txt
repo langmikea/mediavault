@@ -1,0 +1,19 @@
+[1.1a] 16 artifacts will gain an author:* pill
+[1.1b] distinct author slugs: ['author:elmthree_productions', 'author:hunter_root', 'author:hunterrootofficial']
+[1.1a] appended author:* pill to 16 artifacts
+[1.1b] inserted 3 new author:* vocab rows
+[1.5] verification passed; committed.
+  artifacts: 80 (was 80)
+Traceback (most recent call last):
+  File "/sessions/clever-cool-franklin/mnt/AI/Platform/MediaVault/_cowork/v05_phase1_migration.py", line 370, in main
+    print(f"  tags:      {post_tags} (was {pre_tag_count}; +{post_tags - pre_tag_count} author rows)")
+TypeError: unsupported operand type(s) for -: 'set' and 'int'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/sessions/clever-cool-franklin/mnt/AI/Platform/MediaVault/_cowork/v05_phase1_migration.py", line 384, in <module>
+    sys.exit(main())
+  File "/sessions/clever-cool-franklin/mnt/AI/Platform/MediaVault/_cowork/v05_phase1_migration.py", line 375, in main
+    cur.execute("ROLLBACK")
+sqlite3.OperationalError: cannot rollback - no transaction is active

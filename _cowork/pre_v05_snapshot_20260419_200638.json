@@ -1,0 +1,828 @@
+{
+  "generated": "2026-04-19T20:06:38",
+  "db_size_bytes": 1953792,
+  "db_mtime": "2026-04-19T16:41:56",
+  "counts": {
+    "artifacts": 80,
+    "tags": 106,
+    "id_sequence": 4,
+    "ingest_queue": 25
+  },
+  "artifacts_by_status": {
+    "released": 3,
+    "vault": 77
+  },
+  "artifacts_by_storage_mode": {
+    "referenced": 60,
+    "vaulted": 20
+  },
+  "artifacts_by_status_storage": [
+    {
+      "status": "released",
+      "storage_mode": "vaulted",
+      "count": 3
+    },
+    {
+      "status": "vault",
+      "storage_mode": "referenced",
+      "count": 60
+    },
+    {
+      "status": "vault",
+      "storage_mode": "vaulted",
+      "count": 17
+    }
+  ],
+  "parent_links": 18,
+  "released_at_populated": 3,
+  "queue_by_status": {
+    "keep": 25
+  },
+  "queue_stuck_rows": [],
+  "vestigial_populated": {
+    "link_status": 76,
+    "tags_permission": 36,
+    "permission_contact": 0,
+    "permission_evidence_path": 0,
+    "author_name": 37,
+    "confidence_flags": 0,
+    "capture_date": 76
+  },
+  "author_name_distribution": {
+    "(1) Video": 1,
+    "(2) Video": 1,
+    "ElmThree Productions": 2,
+    "Hunter Root": 13,
+    "hunterrootofficial": 1
+  },
+  "vocabulary": [
+    {
+      "slug": "100k_followers",
+      "display_name": "100K Followers",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "2019",
+      "display_name": "2019",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "2022",
+      "display_name": "2022",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "2023",
+      "display_name": "2023",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 4
+    },
+    {
+      "slug": "2024",
+      "display_name": "2024",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "2025",
+      "display_name": "2025",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 21
+    },
+    {
+      "slug": "2026",
+      "display_name": "2026",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "acoustic",
+      "display_name": "Acoustic",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "acoustic_guitar",
+      "display_name": "Acoustic Guitar",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "acoustic_performance",
+      "display_name": "Acoustic Performance",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "acoustic_rock",
+      "display_name": "Acoustic Rock",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 5
+    },
+    {
+      "slug": "advance_tickets",
+      "display_name": "Advance Tickets",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "alternative",
+      "display_name": "Alternative",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 5
+    },
+    {
+      "slug": "artist_page",
+      "display_name": "Artist Page",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 6
+    },
+    {
+      "slug": "audio",
+      "display_name": "Audio",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 28
+    },
+    {
+      "slug": "audio_audio_file",
+      "display_name": "Audio Audio File",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 15
+    },
+    {
+      "slug": "audio_metadata_json",
+      "display_name": "Audio Metadata Json",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 13
+    },
+    {
+      "slug": "band",
+      "display_name": "Band",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 13
+    },
+    {
+      "slug": "bedroom_recording",
+      "display_name": "Bedroom Recording",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "blues",
+      "display_name": "Blues",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "brick_wall",
+      "display_name": "Brick Wall",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "brick_wall_background",
+      "display_name": "Brick Wall Background",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "common",
+      "display_name": "Common",
+      "group_name": "rarity",
+      "is_proposed": 0,
+      "usage_count": 9
+    },
+    {
+      "slug": "cover_song",
+      "display_name": "Cover Song",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "critical",
+      "display_name": "Critical",
+      "group_name": "preservation",
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "crooked_home",
+      "display_name": "Crooked Home",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "distrokid",
+      "display_name": "Distrokid",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "dreaming_up_ways_of_gettin_outta_this_hellhole",
+      "display_name": "Dreaming Up Ways Of Gettin Outta This Hellhole",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "early_stages",
+      "display_name": "Early Stages",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "early_version",
+      "display_name": "Early Version",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "event_listing",
+      "display_name": "Event Listing",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "fall_tour",
+      "display_name": "Fall Tour",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "family",
+      "display_name": "Family",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "fan",
+      "display_name": "Fan",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 4
+    },
+    {
+      "slug": "gear",
+      "display_name": "Gear",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 16
+    },
+    {
+      "slug": "grunge",
+      "display_name": "Grunge",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 5
+    },
+    {
+      "slug": "hacked_account",
+      "display_name": "Hacked Account",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "hellhole_perspective_rubble_lyrics",
+      "display_name": "Hellhole Perspective Rubble Lyrics",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "hunter",
+      "display_name": "Hunter",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 31
+    },
+    {
+      "slug": "hunter_root",
+      "display_name": "Hunter Root",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 77
+    },
+    {
+      "slug": "hunterroot2",
+      "display_name": "Hunterroot2",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "indieartist",
+      "display_name": "Indieartist",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "indiefolk",
+      "display_name": "Indiefolk",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "instagram",
+      "display_name": "Instagram",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "instagram_hacked",
+      "display_name": "Instagram Hacked",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "jam",
+      "display_name": "Jam",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 5
+    },
+    {
+      "slug": "lancaster_pa",
+      "display_name": "Lancaster Pa",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "live_show",
+      "display_name": "Live Show",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 20
+    },
+    {
+      "slug": "long_hair",
+      "display_name": "Long Hair",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "loss",
+      "display_name": "Loss",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "lyme_disease",
+      "display_name": "Lyme Disease",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "lyric",
+      "display_name": "Lyric",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "medusas_disco",
+      "display_name": "Medusas Disco",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "medusasdisco",
+      "display_name": "Medusasdisco",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 6
+    },
+    {
+      "slug": "mental_health",
+      "display_name": "Mental Health",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "merch",
+      "display_name": "Merch",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "milestone",
+      "display_name": "Milestone",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 3
+    },
+    {
+      "slug": "mp3",
+      "display_name": "Mp3",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 28
+    },
+    {
+      "slug": "mp3_only",
+      "display_name": "Mp3 Only",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 26
+    },
+    {
+      "slug": "my_brothers_bones",
+      "display_name": "My Brothers Bones",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "new_music",
+      "display_name": "New Music",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 7
+    },
+    {
+      "slug": "new_song",
+      "display_name": "New Song",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "nick_root",
+      "display_name": "Nick Root",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "notable",
+      "display_name": "Notable",
+      "group_name": "rarity",
+      "is_proposed": 0,
+      "usage_count": 24
+    },
+    {
+      "slug": "original_music",
+      "display_name": "Original Music",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "performance",
+      "display_name": "Performance",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "personal",
+      "display_name": "Personal",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 13
+    },
+    {
+      "slug": "phase2_recovery",
+      "display_name": "Phase2 Recovery",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 26
+    },
+    {
+      "slug": "poster",
+      "display_name": "Poster",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "pre_release",
+      "display_name": "Pre Release",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 5
+    },
+    {
+      "slug": "pre_solo_medusas_disco",
+      "display_name": "Pre Solo Medusas Disco",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 6
+    },
+    {
+      "slug": "pre_solo_run_with_the_hunt",
+      "display_name": "Pre Solo Run With The Hunt",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 33
+    },
+    {
+      "slug": "promotional_post",
+      "display_name": "Promotional Post",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "psychedelic",
+      "display_name": "Psychedelic",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 5
+    },
+    {
+      "slug": "psychedelic_rock",
+      "display_name": "Psychedelic Rock",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "quicksand_sinking",
+      "display_name": "Quicksand Sinking",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "quote",
+      "display_name": "Quote",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "rare",
+      "display_name": "Rare",
+      "group_name": "rarity",
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "rehearsal",
+      "display_name": "Rehearsal",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "released",
+      "display_name": "Released",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "reverbnation",
+      "display_name": "Reverbnation",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 40
+    },
+    {
+      "slug": "reverbnation_artist_page_metadata_json",
+      "display_name": "Reverbnation Artist Page Metadata Json",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 3
+    },
+    {
+      "slug": "reverbnation_artist_page_page_save_html",
+      "display_name": "Reverbnation Artist Page Page Save Html",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 3
+    },
+    {
+      "slug": "reverbnation_song_page_lyrics_txt",
+      "display_name": "Reverbnation Song Page Lyrics Txt",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "reverbnation_song_page_metadata_json",
+      "display_name": "Reverbnation Song Page Metadata Json",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "reverbnation_song_page_page_save_html",
+      "display_name": "Reverbnation Song Page Page Save Html",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "rock",
+      "display_name": "Rock",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 7
+    },
+    {
+      "slug": "runwiththehunt",
+      "display_name": "Runwiththehunt",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 33
+    },
+    {
+      "slug": "show",
+      "display_name": "Show",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 21
+    },
+    {
+      "slug": "singer_songwriter",
+      "display_name": "Singer Songwriter",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 3
+    },
+    {
+      "slug": "social",
+      "display_name": "Social",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "solo",
+      "display_name": "Solo",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 15
+    },
+    {
+      "slug": "song",
+      "display_name": "Song",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "song_page",
+      "display_name": "Song Page",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 6
+    },
+    {
+      "slug": "songwriting",
+      "display_name": "Songwriting",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "songwriting_process",
+      "display_name": "Songwriting Process",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "standard",
+      "display_name": "Standard",
+      "group_name": "preservation",
+      "is_proposed": 0,
+      "usage_count": 76
+    },
+    {
+      "slug": "striped_shirt",
+      "display_name": "Striped Shirt",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "ticketing",
+      "display_name": "Ticketing",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "tiktok",
+      "display_name": "Tiktok",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "tour",
+      "display_name": "Tour",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 4
+    },
+    {
+      "slug": "tour_announcement",
+      "display_name": "Tour Announcement",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 4
+    },
+    {
+      "slug": "town_rat_heathen",
+      "display_name": "Town Rat Heathen",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 3
+    },
+    {
+      "slug": "tribute",
+      "display_name": "Tribute",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 1
+    },
+    {
+      "slug": "unique",
+      "display_name": "Unique",
+      "group_name": "rarity",
+      "is_proposed": 0,
+      "usage_count": 2
+    },
+    {
+      "slug": "venue",
+      "display_name": "Venue",
+      "group_name": null,
+      "is_proposed": 0,
+      "usage_count": 11
+    }
+  ],
+  "vocabulary_total": 106,
+  "enrichment_format": {
+    "v04_style": 23,
+    "v05_style": 0,
+    "empty": 2
+  },
+  "unlinked_sidecar_candidates": [
+    {
+      "id": "MV-HR-20260405-009",
+      "local_asset_path": "C:\\AI\\Platform\\MediaVault\\catalogs\\hunter_root\\_thumbs\\MV-HR-20260405-009.jpg",
+      "media_type": "text-only",
+      "tags": "[\"2025\", \"fan\", \"hunter\", \"hunter_root\", \"lyme_disease\", \"notable\", \"personal\", \"show\", \"standard\", \"tour_announcement\"]"
+    },
+    {
+      "id": "MV-HR-20260416-007",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\medusasdisco\\park-bench-pigeons_19361978\\lyrics.txt",
+      "media_type": "text-only",
+      "tags": "[\"alternative\", \"hunter_root\", \"medusasdisco\", \"pre_solo_medusas_disco\", \"psychedelic\", \"reverbnation\", \"reverbnation_song_page_lyrics_txt\", \"rock\", \"song_page\", \"standard\"]"
+    },
+    {
+      "id": "MV-HR-20260416-013",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\park-bench-pigeons_12495875\\lyrics.txt",
+      "media_type": "text-only",
+      "tags": "[\"acoustic_rock\", \"grunge\", \"hunter_root\", \"jam\", \"pre_solo_run_with_the_hunt\", \"reverbnation\", \"reverbnation_song_page_lyrics_txt\", \"runwiththehunt\", \"song_page\", \"standard\"]"
+    }
+  ]
+}

@@ -1,0 +1,1286 @@
+{
+  "captured_at": "2026-04-17 21:30:16",
+  "schema_target_version": "0.4",
+  "db_path": "C:\\AI\\Platform\\MediaVault\\core\\mediavault.sqlite",
+  "db_size_bytes": 1953792,
+  "backup_path": "C:\\AI\\Platform\\MediaVault\\core\\mediavault.sqlite.bak_v04prep_20260417_213016",
+  "tables": {
+    "artifacts": 76,
+    "id_sequence": 5,
+    "ingest_queue": 123,
+    "post_packages": 0,
+    "sqlite_sequence": 1
+  },
+  "artifact_columns_before": [
+    "id",
+    "domain",
+    "source_url",
+    "source_platform",
+    "capture_date",
+    "post_date",
+    "post_date_confidence",
+    "link_status",
+    "local_asset_path",
+    "thumbnail_path",
+    "description_short",
+    "description_long",
+    "extracted_text",
+    "author_name",
+    "media_type_in_post",
+    "tags_year_era",
+    "tags_content_type",
+    "tags_song_reference",
+    "tags_release_stage",
+    "tags_subject",
+    "tags_topic",
+    "tags_rarity",
+    "tags_preservation",
+    "tags_permission",
+    "tags_keywords",
+    "permission_contact",
+    "permission_evidence_path",
+    "post_usage_log",
+    "notes",
+    "ingest_date",
+    "ingest_source",
+    "confidence_flags",
+    "url",
+    "tinyurl"
+  ],
+  "tag_column_values": {
+    "tags_year_era": [
+      [
+        "pre-solo / Run With The Hunt",
+        32
+      ],
+      [
+        "[\"2025\"]",
+        21
+      ],
+      [
+        "pre-solo / Medusa's Disco",
+        6
+      ],
+      [
+        "[]",
+        5
+      ],
+      [
+        "[\"2023\"]",
+        4
+      ],
+      [
+        "solo",
+        2
+      ],
+      [
+        "[\"2024\"]",
+        2
+      ],
+      [
+        "[\"2022\"]",
+        2
+      ],
+      [
+        "[\"2026\"]",
+        1
+      ],
+      [
+        "[\"2019\"]",
+        1
+      ]
+    ],
+    "tags_content_type": [
+      [
+        "audio/audio_file",
+        15
+      ],
+      [
+        "[\"live-show\"]",
+        14
+      ],
+      [
+        "audio/metadata_json",
+        13
+      ],
+      [
+        "reverbnation_artist_page/page_save_html",
+        3
+      ],
+      [
+        "reverbnation_artist_page/metadata_json",
+        3
+      ],
+      [
+        "[\"live-show\",\"gear\"]",
+        3
+      ],
+      [
+        "reverbnation_song_page/page_save_html",
+        2
+      ],
+      [
+        "reverbnation_song_page/metadata_json",
+        2
+      ],
+      [
+        "reverbnation_song_page/lyrics_txt",
+        2
+      ],
+      [
+        "[\"tour-announcement\"]",
+        2
+      ],
+      [
+        "[\"song\"]",
+        2
+      ],
+      [
+        "[\"personal\"]",
+        2
+      ],
+      [
+        "[\"milestone\"]",
+        2
+      ],
+      [
+        "[]",
+        1
+      ],
+      [
+        "[\"tour-announcement\",\"new-music\"]",
+        1
+      ],
+      [
+        "[\"rehearsal\",\"new-music\"]",
+        1
+      ],
+      [
+        "[\"quote\",\"personal\"]",
+        1
+      ],
+      [
+        "[\"personal\",\"tribute\"]",
+        1
+      ],
+      [
+        "[\"personal\",\"social\"]",
+        1
+      ],
+      [
+        "[\"performance\"]",
+        1
+      ],
+      [
+        "[\"new-music\",\"milestone\"]",
+        1
+      ],
+      [
+        "[\"live-show\",\"tour-announcement\"]",
+        1
+      ],
+      [
+        "[\"live-show\",\"poster\"]",
+        1
+      ],
+      [
+        "[\"live-show\",\"cover-song\"]",
+        1
+      ]
+    ],
+    "tags_song_reference": [
+      [
+        "[\"Town Rat Heathen\"]",
+        3
+      ],
+      [
+        "[\"Quicksand - Sinking\"]",
+        2
+      ],
+      [
+        "Dreaming up ways of gettin' outta this hellhole",
+        2
+      ],
+      [
+        "[\"My Brother's Bones\",\"Crooked Home\"]",
+        1
+      ]
+    ],
+    "tags_release_stage": [
+      [
+        "[]",
+        28
+      ],
+      [
+        "[\"pre-release\"]",
+        4
+      ],
+      [
+        "[\"released\"]",
+        1
+      ],
+      [
+        "[\"released\",\"pre-release\"]",
+        1
+      ],
+      [
+        "[\"early-version\"]",
+        1
+      ],
+      [
+        "[\"cover-song\"]",
+        1
+      ]
+    ],
+    "tags_subject": [
+      [
+        "[\"hunter\",\"solo\"]",
+        12
+      ],
+      [
+        "[\"hunter\",\"band\",\"venue\"]",
+        4
+      ],
+      [
+        "[\"hunter\"]",
+        3
+      ],
+      [
+        "[\"hunter\",\"fan\"]",
+        3
+      ],
+      [
+        "[\"band\",\"venue\"]",
+        3
+      ],
+      [
+        "[\"hunter\",\"band\"]",
+        2
+      ],
+      [
+        "[\"band\",\"hunter\"]",
+        2
+      ],
+      [
+        "[]",
+        1
+      ],
+      [
+        "[\"venue\",\"band\"]",
+        1
+      ],
+      [
+        "[\"hunter\",\"solo\",\"venue\"]",
+        1
+      ],
+      [
+        "[\"hunter\",\"nick-root\"]",
+        1
+      ],
+      [
+        "[\"hunter\",\"fan\",\"venue\"]",
+        1
+      ],
+      [
+        "[\"band\",\"hunter\",\"venue\"]",
+        1
+      ],
+      [
+        "[\"Hunter Root\", \"acoustic guitar\", \"singer-songwriter\", \"original music\"]",
+        1
+      ]
+    ],
+    "tags_topic": [
+      [
+        "[\"show\",\"gear\"]",
+        15
+      ],
+      [
+        "[\"show\"]",
+        2
+      ],
+      [
+        "[\"show\",\"personal\"]",
+        2
+      ],
+      [
+        "[\"new-music\",\"personal\"]",
+        2
+      ],
+      [
+        "[]",
+        1
+      ],
+      [
+        "[\"tour\",\"new-music\"]",
+        1
+      ],
+      [
+        "[\"tour\",\"new-music\",\"personal\"]",
+        1
+      ],
+      [
+        "[\"songwriting\", \"mental health\", \"new song\", \"Instagram hacked\"]",
+        1
+      ],
+      [
+        "[\"show\",\"tour\"]",
+        1
+      ],
+      [
+        "[\"personal\",\"tour\"]",
+        1
+      ],
+      [
+        "[\"personal\",\"new-music\"]",
+        1
+      ],
+      [
+        "[\"personal\",\"merch\"]",
+        1
+      ],
+      [
+        "[\"personal\",\"loss\",\"family\"]",
+        1
+      ],
+      [
+        "[\"new-music\"]",
+        1
+      ],
+      [
+        "[\"lyric\",\"personal\"]",
+        1
+      ],
+      [
+        "[\"lyme-disease\",\"personal\"]",
+        1
+      ],
+      [
+        "[\"lyme-disease\",\"personal\",\"show\"]",
+        1
+      ],
+      [
+        "[\"instagram\",\"personal\"]",
+        1
+      ],
+      [
+        "[\"gear\",\"new-music\"]",
+        1
+      ]
+    ],
+    "tags_rarity": [
+      [
+        "notable",
+        24
+      ],
+      [
+        "common",
+        9
+      ],
+      [
+        "unique",
+        2
+      ],
+      [
+        "rare",
+        1
+      ]
+    ],
+    "tags_preservation": [
+      [
+        "standard",
+        75
+      ],
+      [
+        "critical",
+        1
+      ]
+    ],
+    "tags_permission": [
+      [
+        "not-requested",
+        36
+      ]
+    ],
+    "tags_keywords": [
+      [
+        "reverbnation,audio,mp3,runwiththehunt,phase2_recovery,mp3_only",
+        26
+      ],
+      [
+        "reverbnation,song_page,runwiththehunt,jam,grunge,acoustic rock",
+        3
+      ],
+      [
+        "reverbnation,song_page,medusasdisco,rock,psychedelic,alternative",
+        3
+      ],
+      [
+        "reverbnation,artist_page,runwiththehunt,jam,grunge,acoustic rock",
+        2
+      ],
+      [
+        "reverbnation,artist_page,medusasdisco,rock,psychedelic,alternative",
+        2
+      ],
+      [
+        "reverbnation,artist_page,hunterroot2,rock,singer songwriter,blues",
+        2
+      ],
+      [
+        "indiefolk, indieartist, hellhole perspective rubble lyrics",
+        2
+      ],
+      [
+        "TikTok, bedroom recording, acoustic, promotional post, DistroKid",
+        2
+      ],
+      [
+        "ticketing, event listing, Medusa's Disco, advance tickets, psychedelic rock, Lancaster PA",
+        1
+      ],
+      [
+        "reverbnation,audio,mp3,runwiththehunt",
+        1
+      ],
+      [
+        "reverbnation,audio,mp3,medusasdisco",
+        1
+      ],
+      [
+        "hacked account, 100K followers, fall tour, brick wall background, long hair, striped shirt",
+        1
+      ],
+      [
+        "brick wall, acoustic performance, new song, early stages, songwriting process",
+        1
+      ]
+    ]
+  },
+  "artifacts_by_domain": {
+    "hunter_root": 76
+  },
+  "artifacts_by_platform": {
+    "null": 1,
+    "facebook": 15,
+    "instagram": 1,
+    "local": 12,
+    "other": 7,
+    "reverbnation": 40
+  },
+  "artifacts_by_ingest_source": {
+    "extension-capture": 16,
+    "local-drop": 20,
+    "url-entry": 40
+  },
+  "queue_by_status": {
+    "keep": 23,
+    "pending": 2,
+    "skip": 98
+  },
+  "sidecar_rows": [
+    {
+      "id": "MV-HR-20260416-002",
+      "source_url": "https://www.reverbnation.com/hunterroot2",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\hunterroot2\\_artist\\metadata.json",
+      "description_short": "Hunter Root \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "reverbnation_artist_page/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260416-004",
+      "source_url": "https://www.reverbnation.com/medusasdisco",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\medusasdisco\\_artist\\metadata.json",
+      "description_short": "Medusa's Disco \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "reverbnation_artist_page/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260416-006",
+      "source_url": "https://www.reverbnation.com/medusasdisco/song/19361978-park-bench-pigeons",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\medusasdisco\\park-bench-pigeons_19361978\\metadata.json",
+      "description_short": "Park Bench Pigeons \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "reverbnation_song_page/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260416-010",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\metadata.json",
+      "description_short": "Run With The Hunt \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "reverbnation_artist_page/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260416-012",
+      "source_url": "https://www.reverbnation.com/runwiththehunt/song/12495875-park-bench-pigeons",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\park-bench-pigeons_12495875\\metadata.json",
+      "description_short": "Park Bench Pigeons \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "reverbnation_song_page/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-002",
+      "source_url": "https://www.reverbnation.com/runwiththehunt/song/14767555-brain-cell",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\brain-cell_14767555\\metadata.json",
+      "description_short": "Brain Cell \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-004",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\metadata.json",
+      "description_short": "Dead Man \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-006",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\metadata.json",
+      "description_short": "Doors with Keys \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-008",
+      "source_url": "https://www.reverbnation.com/runwiththehunt/song/13297881-eyes-are-oceans",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\eyes-are-oceans_13297881\\metadata.json",
+      "description_short": "Eyes are Oceans \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-010",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\metadata.json",
+      "description_short": "Freezer Burnt \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-012",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\metadata.json",
+      "description_short": "Northern Light Streaks \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-014",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\metadata.json",
+      "description_short": "Playing Music with Our Bones \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-016",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\metadata.json",
+      "description_short": "Same Page \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-018",
+      "source_url": "https://www.reverbnation.com/runwiththehunt/song/13563739-straightlaced",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\straightlaced_13563739\\metadata.json",
+      "description_short": "Straightlaced \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-020",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\metadata.json",
+      "description_short": "Think My Mind \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-022",
+      "source_url": "https://www.reverbnation.com/runwiththehunt/song/14309195-time-flow-zero",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\time-flow-zero_14309195\\metadata.json",
+      "description_short": "Time Flow Zero \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-024",
+      "source_url": "https://www.reverbnation.com/runwiththehunt",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\metadata.json",
+      "description_short": "Trees and Everything \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    },
+    {
+      "id": "MV-HR-20260417-026",
+      "source_url": "https://www.reverbnation.com/runwiththehunt/song/13447330-whiskey-to-the-sun",
+      "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\whiskey-to-the-sun_13447330\\metadata.json",
+      "description_short": "Whiskey to the Sun \u2014 rn_archive extracted metadata",
+      "media_type_in_post": "text-only",
+      "tags_content_type": "audio/metadata_json"
+    }
+  ],
+  "sidecar_parent_matches": [
+    {
+      "sidecar_id": "MV-HR-20260416-002",
+      "sidecar_short": "Hunter Root \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-001",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\hunterroot2\\_artist\\page_save\\Hunter Root Music, Lyrics, Songs, and Videos.html",
+          "media_type_in_post": "link"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260416-004",
+      "sidecar_short": "Medusa's Disco \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\medusasdisco\\_artist\\page_save\\Medusa's Disco _ ReverbNation.html",
+          "media_type_in_post": "link"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260416-006",
+      "sidecar_short": "Park Bench Pigeons \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\medusasdisco\\park-bench-pigeons_19361978\\page_save\\Park Bench Pigeons by Medusa's Disco _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260416-007",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\medusasdisco\\park-bench-pigeons_19361978\\lyrics.txt",
+          "media_type_in_post": "text-only"
+        },
+        {
+          "id": "MV-HR-20260416-008",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\medusasdisco\\park-bench-pigeons_19361978\\audio\\Park_Bench_Pigeons.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260416-010",
+      "sidecar_short": "Run With The Hunt \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260416-012",
+      "sidecar_short": "Park Bench Pigeons \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\park-bench-pigeons_12495875\\page_save\\Park Bench Pigeons by Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260416-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\park-bench-pigeons_12495875\\lyrics.txt",
+          "media_type_in_post": "text-only"
+        },
+        {
+          "id": "MV-HR-20260416-014",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\park-bench-pigeons_12495875\\audio\\Park_Bench_Pigeons.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-002",
+      "sidecar_short": "Brain Cell \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260417-001",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\brain-cell_14767555\\audio\\run-with-the-hunt_brain-cell.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-004",
+      "sidecar_short": "Dead Man \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-006",
+      "sidecar_short": "Doors with Keys \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-008",
+      "sidecar_short": "Eyes are Oceans \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260417-007",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\eyes-are-oceans_13297881\\audio\\run-with-the-hunt_eyes-are-oceans.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-010",
+      "sidecar_short": "Freezer Burnt \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-012",
+      "sidecar_short": "Northern Light Streaks \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-014",
+      "sidecar_short": "Playing Music with Our Bones \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-016",
+      "sidecar_short": "Same Page \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-018",
+      "sidecar_short": "Straightlaced \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260417-017",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\straightlaced_13563739\\audio\\run-with-the-hunt_straightlaced.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-020",
+      "sidecar_short": "Think My Mind \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-022",
+      "sidecar_short": "Time Flow Zero \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260417-021",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\time-flow-zero_14309195\\audio\\run-with-the-hunt_time-flow-zero.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-024",
+      "sidecar_short": "Trees and Everything \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260416-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\_artist\\page_save\\Run With The Hunt _ ReverbNation.html",
+          "media_type_in_post": "link"
+        },
+        {
+          "id": "MV-HR-20260417-003",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\dead-man_mp3only\\audio\\run-with-the-hunt_dead-man.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-005",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\doors-with-keys_mp3only\\audio\\run-with-the-hunt_doors-with-keys.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-009",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\freezer-burnt_mp3only\\audio\\run-with-the-hunt_freezer-burnt.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-011",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\northern-light-streaks_mp3only\\audio\\run-with-the-hunt_northern-light-streaks.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-013",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\playing-music-with-our-bones_mp3only\\audio\\run-with-the-hunt_playing-music-with-our-bones.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-015",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\same-page_mp3only\\audio\\run-with-the-hunt_same-page.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-019",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\think-my-mind_mp3only\\audio\\run-with-the-hunt_think-my-mind.mp3",
+          "media_type_in_post": "mixed"
+        },
+        {
+          "id": "MV-HR-20260417-023",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\trees-and-everything_mp3only\\audio\\run-with-the-hunt_trees-and-everything.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    },
+    {
+      "sidecar_id": "MV-HR-20260417-026",
+      "sidecar_short": "Whiskey to the Sun \u2014 rn_archive extracted metadata",
+      "parent_candidates": [
+        {
+          "id": "MV-HR-20260417-025",
+          "local_asset_path": "C:\\AI\\Projects\\Hunter Root\\archive\\reverbnation\\runwiththehunt\\whiskey-to-the-sun_13447330\\audio\\run-with-the-hunt_whiskey-to-the-sun.mp3",
+          "media_type_in_post": "mixed"
+        }
+      ]
+    }
+  ],
+  "missing_asset_files": [
+    {
+      "id": "MV-HR-20260405-016",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251010_230323763_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-017",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251010_230329057_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-018",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251010_234223618_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-019",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251010_235717309_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-020",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251010_235719641_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-021",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_010746144_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-022",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_010747360_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-023",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_010758038_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-024",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_010758567_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-025",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_011805831_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-026",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_011810953_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-027",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_011812587_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-028",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_011813745_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-029",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_011904000_iOS.MOV"
+    },
+    {
+      "id": "MV-HR-20260405-030",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_015659410_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-031",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_015700912_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-032",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_015704017_iOS.heic"
+    },
+    {
+      "id": "MV-HR-20260405-033",
+      "missing_path": "C:\\AI\\Platform\\MediaVault\\intake\\drop\\20251011_025844348_iOS.heic"
+    }
+  ],
+  "storage_mode_preview": {
+    "vaulted": 16,
+    "referenced": 60,
+    "url_only": 0
+  }
+}

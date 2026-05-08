@@ -1,0 +1,64 @@
+[2.1] pre-created merge #3 target: run_with_the_hunt
+[2.1] merge #1: hunter → hunter_root · touched=31 · target_usage≈77
+[2.1] merge #2: medusasdisco → medusas_disco · touched=6 · target_usage≈7
+[2.1] merge #3: runwiththehunt → run_with_the_hunt · touched=33 · target_usage≈33
+[2.1] merge #4: pre_solo_run_with_the_hunt → run_with_the_hunt · touched=33 · target_usage≈33
+[2.1] merge #5: pre_solo_medusas_disco → medusas_disco · touched=6 · target_usage≈7
+[2.1] merge #6: hunterroot2 → hunter_root · touched=2 · target_usage≈77
+[2.1] merge #7: audio_audio_file → audio · touched=15 · target_usage≈28
+[2.1] merge #8: audio_metadata_json → audio · touched=13 · target_usage≈28
+[2.1] merge #9: mp3_only → audio · touched=26 · target_usage≈28
+[2.1] merge #10: reverbnation_artist_page_metadata_json → reverbnation · touched=3 · target_usage≈40
+[2.1] merge #11: reverbnation_artist_page_page_save_html → reverbnation · touched=3 · target_usage≈40
+[2.1] merge #12: reverbnation_song_page_lyrics_txt → reverbnation · touched=2 · target_usage≈40
+[2.1] merge #13: reverbnation_song_page_metadata_json → reverbnation · touched=2 · target_usage≈40
+[2.1] merge #14: reverbnation_song_page_page_save_html → reverbnation · touched=2 · target_usage≈40
+[2.2] delete standard: touched=76 vocab_deleted=True
+[2.2] delete critical: touched=1 vocab_deleted=True
+[2.2] delete 2019: touched=1 vocab_deleted=True
+[2.2] delete 2022: touched=2 vocab_deleted=True
+[2.2] delete 2023: touched=4 vocab_deleted=True
+[2.2] delete 2024: touched=2 vocab_deleted=True
+[2.2] delete 2025: touched=21 vocab_deleted=True
+[2.2] delete 2026: touched=1 vocab_deleted=True
+[2.2] delete striped_shirt: touched=1 vocab_deleted=True
+[2.2] delete long_hair: touched=1 vocab_deleted=True
+[2.2] delete brick_wall: touched=1 vocab_deleted=True
+[2.2] delete brick_wall_background: touched=1 vocab_deleted=True
+[2.2] delete original_music: touched=1 vocab_deleted=True
+[2.2] delete town_rat_heathen: touched=3 vocab_deleted=True
+[2.2] delete quicksand_sinking: touched=2 vocab_deleted=True
+[2.2] delete dreaming_up_ways_of_gettin_outta_this_hellhole: touched=2 vocab_deleted=True
+[2.2] delete hellhole_perspective_rubble_lyrics: touched=2 vocab_deleted=True
+[2.2] delete my_brothers_bones: touched=1 vocab_deleted=True
+[2.2] delete crooked_home: touched=1 vocab_deleted=True
+[2.2] delete rock: touched=7 vocab_deleted=True
+[2.2] delete acoustic: touched=2 vocab_deleted=True
+[2.2] delete jam: touched=5 vocab_deleted=True
+[2.2] delete grunge: touched=5 vocab_deleted=True
+[2.2] delete psychedelic: touched=5 vocab_deleted=True
+[2.2] delete blues: touched=2 vocab_deleted=True
+[2.2] delete singer_songwriter: touched=3 vocab_deleted=True
+[2.2] delete acoustic_rock: touched=5 vocab_deleted=True
+[2.2] delete psychedelic_rock: touched=1 vocab_deleted=True
+[2.2] delete indiefolk: touched=2 vocab_deleted=True
+[2.2] delete alternative: touched=5 vocab_deleted=True
+[2.2] delete show: touched=21 vocab_deleted=True
+[2.2] delete song: touched=2 vocab_deleted=True
+[2.2] delete performance: touched=1 vocab_deleted=True
+[2.2] delete quote: touched=1 vocab_deleted=True
+[2.2] delete lyric: touched=1 vocab_deleted=True
+[2.2] delete venue: touched=11 vocab_deleted=True
+[2.2] delete phase2_recovery: touched=26 vocab_deleted=True
+[2.2] delete mp3_only: touched=0 vocab_deleted=False
+[2.3] create run_with_the_hunt: already exists, skipping
+[2.3] create seeds (Seeds, category=bands)
+[2.3] create music_video (Music Video, category=content_kind)
+[2.3] create fan_art (Fan Art, category=content_kind)
+[2.3] create memorabilia (Memorabilia, category=content_kind)
+[2.4] usage_count recomputed
+[2.5] category assignments applied (including author:* → people)
+
+[2.6] verification passed; committed.
+  tags:  109 → 63 (within 55–70).
+  summary json -> _cowork/phase2_summary.json
