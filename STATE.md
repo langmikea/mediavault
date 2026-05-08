@@ -93,3 +93,48 @@ SPEC reconciled same day.
 
 Next: v0.7 punchlist (not yet written).
 
+## Version control
+
+Initialized 2026-05-08. Repo at `C:\AI\Platform\MediaVault\.git`,
+**local-only — no remote configured, none planned.** MediaVault holds
+operator content (catalogs/, intake/) alongside source on the same machine;
+pushing to a hosted remote was never the model and never will be.
+
+**What's tracked vs ignored.** See `.gitignore` for the canonical list.
+Tracked: source code (Python, JS), HTML UIs, design and process docs
+(this file, SPEC.md, README.md, PROJECT.md, WORKFLOW.md, the
+MEDIAVAULT_V0X_DESIGN docs, COWORK_BRIEF and COWORK_BRIEF_v05, the v0.2
+RS docx), session artifacts in `_cowork/` (decision records, briefs,
+audits, one-shot patch scripts, migration logs, run logs), tests/, the
+current CHANGELOG. Ignored: runtime SQLite (and journal/wal/shm), all
+`*.sqlite.bak_*`, all `*.pre_v0*` and `*.bak_pre_*` backup siblings,
+`*.old_v02` preserved-reference copies (quarantine duplicates already
+exist at `D:\AI_OK_TO_DELETE\`), `catalogs/` (vault content),
+`intake/` (inbound queue), `thumbnails/` (runtime cache),
+`__pycache__/`, OS noise.
+
+**Commit convention.** Every code, schema, or doc change gets a commit.
+Runtime state changes (DB writes from the running server, vault ingests,
+intake queue churn, regenerated thumbnails) do not — they're ignored
+and don't show up in `git status`. CHANGELOG.md is the human-readable
+version log alongside `git log`; bump it for any operator-visible
+change to API contracts, schema, or workflow.
+
+**Branches.** Optional. For multi-file changes that want a checkpoint
+before merging, branch off master, commit incrementally, then merge
+(fast-forward or `--no-ff`, your call). No PR machinery, no review
+gate — this is a single-operator local repo. Use hyphenated branch
+names; the FUSE-mount sandbox can't create slashed names.
+
+**Cowork sandbox.** When working from inside a cowork session, expect
+to need `mcp__cowork__allow_cowork_file_delete` permission on `.git/`
+before any git op that uses lock files (every commit / index write).
+FUSE writes can stale-cache config files; the workaround is the
+rm-then-write Python pattern from `_cowork/`-style scripts. Set
+`core.autocrlf = false` (already in `.git/config`) — don't let git
+rewrite line endings on the FUSE round-trip.
+
+**Known-failing tests.** `_cowork/v06_tag_create_test.py` has
+pre-existing failures from before this repo. Tracked-but-known.
+Do not fix mechanically without v0.7 punchlist context.
+
