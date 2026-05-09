@@ -6,6 +6,12 @@ which files moved, why.
 
 Entries newest first.
 
+## v0.5.1 — 2026-05-08 (continued)
+
+docs: git-init closure report from session 2026-05-08 absorbed into
+`_cowork/MV_GIT_INIT_CLOSURE_2026-05-08.md` (was a transient session
+output; now under version control).
+
 ## v0.5.1 — 2026-05-08
 
 api: allow `local_asset_path` null when `storage_mode` is `url_only`.
