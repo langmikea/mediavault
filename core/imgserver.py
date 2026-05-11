@@ -41,13 +41,13 @@ from urllib.parse import parse_qs, unquote, urlparse
 # Helper module — extension handlers live alongside imgserver.py and are
 # imported here rather than inlined. handle_artifact_register and
 # handle_asset_raw are unchanged from v0.2; handle_deep_dive_vocabulary
-# and handle_artifact_deep_dive_save were added in Phase 4 of the museum's
-# Deep Dive feature (see SPEC_DRAFT_v3.md §5 Phase 4 in the museum repo).
+# was added in Phase 4 of the museum's Deep Dive feature and retained in
+# Phase v5-5 cleanup (per Q-1: the endpoint will be repurposed in a
+# future session as a suggestion source for MV's standard pill wall).
 from imgserver_extensions import (  # noqa: E402
     handle_artifact_register,
     handle_asset_raw,
     handle_deep_dive_vocabulary,
-    handle_artifact_deep_dive_save,
 )
 
 # ---------------------------------------------------------------------------
@@ -1522,7 +1522,7 @@ GET_ROUTES = {
     "/api/queue":              handle_queue_list,
     "/api/tags":               handle_tags_list,
     "/api/fb-candidates":      handle_fb_candidates_get,
-    "/api/deep-dive-vocabulary": handle_deep_dive_vocabulary,  # from imgserver_extensions (Phase 4)
+    "/api/deep-dive-vocabulary": handle_deep_dive_vocabulary,  # from imgserver_extensions (retained per Phase v5-5 Q-1; will be repurposed)
     "/ext/hr_manager_renderer.js": handle_renderer_js,
 }
 
@@ -1542,7 +1542,6 @@ POST_ROUTES = {
     "/api/artifact-delete":          handle_artifact_delete,
     "/api/artifact-requeue":         handle_artifact_requeue,
     "/api/artifact-register":        handle_artifact_register,   # from imgserver_extensions
-    "/api/artifact-deep-dive-save":  handle_artifact_deep_dive_save,  # from imgserver_extensions (Phase 4)
     "/api/thumbgen":                 handle_thumbgen,
     "/api/tag-create":               handle_tag_create,
     "/api/tag-update":               handle_tag_update,
