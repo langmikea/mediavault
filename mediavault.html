@@ -356,6 +356,42 @@ textarea{resize:vertical;font:13px var(--sans)}
 #vaultDetail .dTagList .tagPill.unselected{background:var(--bg3);color:var(--text2);border:1px dashed var(--text2);text-decoration:line-through;opacity:.55}
 #vaultDetail .dTagList .tagPill.unselected:hover{opacity:.85;filter:none}
 
+/* ============ DEEP DIVE (Phase 4) ============
+   The Deep Dive section lives inside the vault detail panel as a `.dSection`,
+   styled in the same family as the existing Tags / Description / Children
+   sections. Pill rendering matches the existing .tagPill style so the
+   operator's eye doesn't have to relearn anything. Per-group <details>
+   collapsibles mirror the inbox pill-wall pattern. */
+.deepDive .ddSummary{cursor:pointer;font:600 11px var(--mono);color:var(--gold);padding:4px 6px;letter-spacing:.5px;text-transform:uppercase;user-select:none;list-style:none;background:var(--bg2);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;gap:6px;margin-top:4px}
+.deepDive details[open] .ddSummary{border-bottom:none;border-radius:3px 3px 0 0}
+.deepDive .ddSummary::-webkit-details-marker{display:none}
+.deepDive .ddSummary::before{content:'▸';color:var(--gold2);transition:transform .1s;display:inline-block}
+.deepDive details[open] .ddSummary::before{transform:rotate(90deg)}
+.deepDive .ddSummary .ddCount{margin-left:auto;color:var(--text2);font-weight:400;font-size:10px}
+.deepDive .ddPills{display:flex;flex-wrap:wrap;gap:3px;padding:6px;background:var(--bg3);border:1px solid var(--border);border-top:none;border-radius:0 0 3px 3px}
+.deepDive .ddPill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;font:11px var(--mono);border-radius:3px;cursor:pointer;user-select:none;border:1px solid var(--gold);color:var(--gold);background:transparent;white-space:nowrap}
+.deepDive .ddPill:hover{outline:1px solid var(--gold2)}
+.deepDive .ddPill.on{background:var(--gold);color:#111}
+.deepDive .ddPill.freeform{font-style:italic}
+.deepDive .ddCardField{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.deepDive .ddCardField label{font:10px var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.deepDive .ddCardField input{flex:1;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:3px 6px;font:12px var(--mono)}
+.deepDive .ddSearch{width:100%;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:3px 6px;font:11px var(--mono);margin-bottom:6px}
+.deepDive .ddAddRow{display:flex;gap:4px;margin-top:6px;align-items:center}
+.deepDive .ddAddRow input,.deepDive .ddAddRow select{background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:3px 6px;font:11px var(--mono)}
+.deepDive .ddAddRow .ddAddTag{flex:1;min-width:0}
+.deepDive .ddAddRow .ddAddGroup{flex:0 0 80px}
+.deepDive .ddAddRow button{font:600 10px var(--mono);padding:3px 8px;background:var(--bg2);color:var(--gold);border:1px solid var(--gold);border-radius:3px;cursor:pointer}
+.deepDive .ddAddRow button:hover{background:var(--gold);color:#111}
+.deepDive .ddSaveBar{display:flex;justify-content:flex-end;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid var(--border)}
+.deepDive .ddSaveBar button{font:600 11px var(--mono);padding:4px 12px;background:var(--green);color:#111;border:1px solid var(--green);border-radius:3px;cursor:pointer}
+.deepDive .ddSaveBar button:hover{filter:brightness(1.1)}
+.deepDive .ddSaveBar button.ddRevertBtn{background:transparent;color:var(--text2);border-color:var(--border)}
+.deepDive .ddSaveBar button.ddRevertBtn:hover{color:var(--gold);border-color:var(--gold);filter:none}
+.deepDive .ddSaveBar button:disabled{opacity:.5;cursor:not-allowed}
+.deepDive .ddErr{color:var(--red);font:11px var(--mono);margin:4px 0;padding:4px 6px;background:rgba(180,60,60,.15);border:1px solid var(--red);border-radius:3px}
+.deepDive .ddHidden{display:none}
+
 /* ============ VOCAB ADMIN ============ */
 #vocabPane{flex-direction:column !important}
 /* v0.6 Item 6: no local toolbar — all actions (search, + NEW TAG, ⇔ MERGE,
@@ -1885,6 +1921,10 @@ function renderDetail(id){
       <div class="dField" data-f="description_long"><label>Long</label><div class="dVal clickable" onclick="editDetailField('description_long')">${esc(a.description_long||'')}</div><textarea onblur="saveDetailField('description_long',this.value)">${esc(a.description_long||'')}</textarea></div>
       <div class="dField" data-f="extracted_text"><label>Extracted</label><div class="dVal clickable" onclick="editDetailField('extracted_text')">${esc(a.extracted_text||'')}</div><textarea onblur="saveDetailField('extracted_text',this.value)">${esc(a.extracted_text||'')}</textarea></div>
     </div>
+    <div class="dSection deepDive" id="deepDiveSection">
+      <h4>Deep Dive</h4>
+      <div id="deepDiveContent">Loading vocabulary…</div>
+    </div>
     ${children.length ? `<div class="dSection"><h4>Children (${children.length})</h4><div class="dChildren">${children.map(c=>`
       <div class="dChild" onclick="selectArtifact('${esc(c.id)}')">
         ${c.thumbnail_path?`<img src="/image-raw?path=${encodeURIComponent(c.thumbnail_path)}" onerror="this.style.display='none'">`:''}
@@ -1892,6 +1932,12 @@ function renderDetail(id){
       </div>`).join('')}</div></div>`: ''}
     ${a.parent_artifact_id ? `<div class="dSection"><h4>Parent</h4><div class="dField"><div class="dVal clickable" onclick="selectArtifact('${esc(a.parent_artifact_id)}')">${esc(a.parent_artifact_id)}</div></div></div>`:''}
   `;
+  // Phase 4: populate the Deep Dive section. Fires-and-forgets - the section
+  // shows "Loading…" until the vocabulary fetch resolves and the section
+  // renders itself with the artifact's current Deep Dive state. Errors
+  // (e.g., the museum CSV is missing) surface inline in the section, not
+  // as a toast, so the rest of the panel renders cleanly regardless.
+  renderDeepDiveSection(a);
 }
 async function closeDetail(){
   // v0.6 Item 8d #2: panel stays visible; clearing the selection just
@@ -1956,6 +2002,318 @@ async function saveDetailField(f, val){
     vaultRender();
     toast('Saved','ok');
   }catch(e){ toast('Save failed: '+e.message,'err'); }
+}
+
+// ==================== DEEP DIVE (Phase 4) ====================
+// The Deep Dive tab is the operator's curation surface for the museum's
+// Deep Dive feature. It reads the vocabulary CSV from the museum repo at
+// a hardcoded absolute path (per SPEC_DRAFT_v3.md Q-C; MV is local-only
+// and the museum repo is at a known location), lets the operator pick
+// `deep:<group>:<tag>` pills against the current artifact, captures the
+// `card_id` that ties this curation to a specific museum card, and writes
+// the result via /api/artifact-deep-dive-save in a format the museum-side
+// export at `weird-baby-museum/tools/export-deep-tags.mjs` parses verbatim
+// (deep:<group>:<tag> in tags[], "card_id:<value>" in notes as a JSON
+// array element).
+//
+// State model: the vocabulary is fetched once per session and cached.
+// Per-artifact draft state (selected pairs, freeform additions, card_id
+// text) is held in DEEP_DIVE_STATE, keyed by artifact id, so navigating
+// away and back during a session doesn't lose unsaved edits. On Save the
+// state is cleared and the panel re-renders from the persisted DB.
+let DEEP_DIVE_VOCAB = null;          // {groups:[], tags:[{tag,group,notes}], source}
+let DEEP_DIVE_VOCAB_ERROR = null;    // human-readable error string when CSV unreadable
+let DEEP_DIVE_VOCAB_PROMISE = null;  // in-flight fetch (avoid double-fetch races)
+const DEEP_DIVE_STATE = new Map();   // artifactId -> {selected:Set('g:t'), freeform:Set('g:t'), cardId, dirty}
+
+async function ensureDeepDiveVocab(){
+  if(DEEP_DIVE_VOCAB) return DEEP_DIVE_VOCAB;
+  if(DEEP_DIVE_VOCAB_PROMISE) return DEEP_DIVE_VOCAB_PROMISE;
+  DEEP_DIVE_VOCAB_PROMISE = (async () => {
+    try{
+      const r = await fetch(API_BASE + '/api/deep-dive-vocabulary');
+      const j = await r.json();
+      if(!r.ok || !j.ok){
+        DEEP_DIVE_VOCAB_ERROR = j.error || ('HTTP ' + r.status);
+        return null;
+      }
+      DEEP_DIVE_VOCAB_ERROR = null;
+      DEEP_DIVE_VOCAB = j;
+      return j;
+    }catch(e){
+      DEEP_DIVE_VOCAB_ERROR = e.message || String(e);
+      return null;
+    }finally{
+      DEEP_DIVE_VOCAB_PROMISE = null;
+    }
+  })();
+  return DEEP_DIVE_VOCAB_PROMISE;
+}
+
+// Extract the currently-saved Deep Dive state from an artifact, returning
+// {selected:Set('g:t'), cardId}. Matches what the backend would parse from
+// the same tags[] / notes[] persisted shape.
+function parseDeepStateFromArtifact(a){
+  const selected = new Set();
+  for(const t of (a._tags || [])){
+    if(typeof t !== 'string' || !t.startsWith('deep:')) continue;
+    const parts = t.split(':');
+    if(parts.length !== 3 || !parts[1] || !parts[2]) continue;
+    selected.add(parts[1] + ':' + parts[2]);
+  }
+  let cardId = '';
+  if(a.notes){
+    let arr = null;
+    try{ const parsed = JSON.parse(a.notes); if(Array.isArray(parsed)) arr = parsed; }catch(e){}
+    if(arr){
+      // Take the LAST card_id:<value> entry - mirrors the export script's
+      // `matches[matches.length - 1]` resolution rule for duplicates.
+      for(const s of arr){
+        if(typeof s === 'string' && s.startsWith('card_id:')){
+          cardId = s.slice('card_id:'.length).trim();
+        }
+      }
+    }
+  }
+  return {selected, cardId};
+}
+
+function getOrInitDeepState(a){
+  let st = DEEP_DIVE_STATE.get(a.id);
+  if(!st){
+    const persisted = parseDeepStateFromArtifact(a);
+    st = {
+      selected: new Set(persisted.selected),
+      freeform: new Set(),  // tags not in vocabulary CSV that the operator added
+      cardId: persisted.cardId,
+      dirty: false,
+    };
+    DEEP_DIVE_STATE.set(a.id, st);
+  }
+  return st;
+}
+
+async function renderDeepDiveSection(a){
+  const host = document.getElementById('deepDiveContent');
+  if(!host) return;
+  // Vocabulary fetch is per-session; we trigger it here on first open.
+  if(!DEEP_DIVE_VOCAB && !DEEP_DIVE_VOCAB_ERROR){
+    host.textContent = 'Loading vocabulary…';
+    await ensureDeepDiveVocab();
+  }
+  if(DEEP_DIVE_VOCAB_ERROR){
+    // Per spec sec.5: clear error message pointing at the path. Render
+    // inline rather than toast so the operator can read it while
+    // looking at the artifact.
+    host.innerHTML = `<div class="ddErr">${esc(DEEP_DIVE_VOCAB_ERROR)}</div>
+      <div style="font:11px var(--sans);color:var(--text2);margin-top:6px">
+        Deep Dive curation can't proceed until the museum repo's vocabulary
+        CSV is reachable at the expected path.</div>`;
+    return;
+  }
+  if(!DEEP_DIVE_VOCAB){
+    host.textContent = 'Loading vocabulary…';
+    return;
+  }
+  const st = getOrInitDeepState(a);
+  const filter = (st._filter || '').toLowerCase();
+
+  // Build group -> [tags] map from vocab, plus surface any freeform tags
+  // not in the CSV so the operator can see and toggle them.
+  const groupedFromCsv = {};
+  for(const g of DEEP_DIVE_VOCAB.groups){ groupedFromCsv[g] = []; }
+  for(const row of DEEP_DIVE_VOCAB.tags){
+    if(!groupedFromCsv[row.group]) groupedFromCsv[row.group] = [];
+    groupedFromCsv[row.group].push({tag: row.tag, notes: row.notes, freeform: false});
+  }
+  // Merge freeform tags (not in CSV) so they render alongside their group.
+  for(const key of st.selected){
+    const [g, t] = key.split(':');
+    if(!g || !t) continue;
+    const csvHas = (groupedFromCsv[g] || []).some(x => x.tag === t);
+    if(!csvHas){
+      if(!groupedFromCsv[g]) groupedFromCsv[g] = [];
+      groupedFromCsv[g].push({tag: t, notes: '', freeform: true});
+    }
+  }
+  // Render order: CSV-declared groups first (in CSV order), then any
+  // groups present only as freeform additions.
+  const groupOrder = [...DEEP_DIVE_VOCAB.groups];
+  for(const g of Object.keys(groupedFromCsv)){
+    if(!groupOrder.includes(g)) groupOrder.push(g);
+  }
+
+  const groupSelectOptions = groupOrder.map(g =>
+    `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+
+  const groupsHtml = groupOrder.map(g => {
+    const items = (groupedFromCsv[g] || []);
+    const visibleItems = filter
+      ? items.filter(x => x.tag.toLowerCase().includes(filter) || g.toLowerCase().includes(filter))
+      : items;
+    const onCount = items.filter(x => st.selected.has(g + ':' + x.tag)).length;
+    const pills = visibleItems.map(x => {
+      const key = g + ':' + x.tag;
+      const on = st.selected.has(key) ? ' on' : '';
+      const ff = x.freeform ? ' freeform' : '';
+      const title = x.notes ? esc(x.notes) : '';
+      return `<span class="ddPill${on}${ff}" data-group="${esc(g)}" data-tag="${esc(x.tag)}" title="${title}" onclick="toggleDeepPill('${esc(a.id)}','${esc(g)}','${esc(x.tag)}')">${esc(x.tag)}</span>`;
+    }).join('');
+    const open = (filter && visibleItems.length > 0) || onCount > 0 ? ' open' : '';
+    return `<details class="ddGroup"${open}>
+      <summary class="ddSummary">${esc(g)} <span class="ddCount">${onCount}/${items.length}</span></summary>
+      <div class="ddPills">${pills || '<span style="color:var(--text2);font-style:italic">no matches</span>'}</div>
+    </details>`;
+  }).join('');
+
+  // Card-ID + search + free-form-add controls.
+  host.innerHTML = `
+    <div class="ddCardField">
+      <label for="ddCardId">Card&nbsp;ID</label>
+      <input id="ddCardId" type="text" placeholder="e.g. art-014"
+             value="${esc(st.cardId)}"
+             oninput="onDeepCardIdInput('${esc(a.id)}', this.value)">
+    </div>
+    <input class="ddSearch" type="text" placeholder="Filter tags…"
+           value="${esc(st._filter || '')}"
+           oninput="onDeepSearchInput('${esc(a.id)}', this.value)">
+    <div id="deepDiveGroups">${groupsHtml}</div>
+    <div class="ddAddRow">
+      <input class="ddAddTag" type="text" placeholder="Free-form tag" id="ddAddTagInput">
+      <select class="ddAddGroup" id="ddAddGroupSelect">${groupSelectOptions}</select>
+      <button onclick="addDeepFreeform('${esc(a.id)}')" title="Add a tag not in the museum vocabulary CSV">+ Add</button>
+    </div>
+    <div class="ddSaveBar">
+      <button class="ddRevertBtn" onclick="revertDeepDive('${esc(a.id)}')" title="Discard unsaved edits and re-load from DB">Revert</button>
+      <button onclick="saveDeepDive('${esc(a.id)}')" id="ddSaveBtn"
+              ${st.dirty ? '' : 'disabled'}
+              title="Persist deep:&lt;group&gt;:&lt;tag&gt; tags and card_id:&lt;value&gt; note to MV">Save</button>
+    </div>
+  `;
+}
+
+function onDeepCardIdInput(artifactId, val){
+  const a = ARTIFACTS.find(x => x.id === artifactId);
+  if(!a) return;
+  const st = getOrInitDeepState(a);
+  st.cardId = (val || '').trim();
+  st.dirty = true;
+  const btn = document.getElementById('ddSaveBtn');
+  if(btn) btn.disabled = false;
+}
+
+function onDeepSearchInput(artifactId, val){
+  const a = ARTIFACTS.find(x => x.id === artifactId);
+  if(!a) return;
+  const st = getOrInitDeepState(a);
+  st._filter = val || '';
+  renderDeepDiveSection(a);
+  // restore focus + caret to the search input (it's a fresh element after re-render)
+  const inp = document.querySelector('#deepDiveContent .ddSearch');
+  if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+
+function toggleDeepPill(artifactId, group, tag){
+  const a = ARTIFACTS.find(x => x.id === artifactId);
+  if(!a) return;
+  const st = getOrInitDeepState(a);
+  const key = group + ':' + tag;
+  if(st.selected.has(key)){
+    st.selected.delete(key);
+    // If the freeform-source flag was set for this pair, drop it too -
+    // a removed freeform tag stops being a "this save will create vocab"
+    // candidate. The CSV-source tags don't need this cleanup.
+    st.freeform.delete(key);
+  }else{
+    st.selected.add(key);
+  }
+  st.dirty = true;
+  renderDeepDiveSection(a);
+}
+
+function addDeepFreeform(artifactId){
+  const a = ARTIFACTS.find(x => x.id === artifactId);
+  if(!a) return;
+  const tagInput = document.getElementById('ddAddTagInput');
+  const groupSelect = document.getElementById('ddAddGroupSelect');
+  if(!tagInput || !groupSelect) return;
+  const rawTag = (tagInput.value || '').trim().toLowerCase();
+  const rawGroup = (groupSelect.value || '').trim().toLowerCase();
+  if(!rawTag || !rawGroup){
+    toast('Tag and group required','err');
+    return;
+  }
+  // Mirror the backend's _normalize_deep_pair grammar: no colons, no
+  // whitespace. Hyphens permitted (matches museum CSV `pink-hats` style).
+  if(/[\s:]/.test(rawTag) || /[\s:]/.test(rawGroup)){
+    toast('No spaces or colons in tag or group','err');
+    return;
+  }
+  const st = getOrInitDeepState(a);
+  const key = rawGroup + ':' + rawTag;
+  st.selected.add(key);
+  // Mark this pair as freeform IFF the CSV doesn't already have it. The
+  // backend treats freeform entries as candidates for vocabulary upsert
+  // with is_proposed=1.
+  const csvHas = DEEP_DIVE_VOCAB && DEEP_DIVE_VOCAB.tags.some(
+    r => r.group.toLowerCase() === rawGroup && r.tag.toLowerCase() === rawTag);
+  if(!csvHas) st.freeform.add(key);
+  st.dirty = true;
+  tagInput.value = '';
+  renderDeepDiveSection(a);
+}
+
+function revertDeepDive(artifactId){
+  // Drop any in-memory edits and re-derive from the artifact's persisted state.
+  DEEP_DIVE_STATE.delete(artifactId);
+  const a = ARTIFACTS.find(x => x.id === artifactId);
+  if(a) renderDeepDiveSection(a);
+}
+
+async function saveDeepDive(artifactId){
+  const a = ARTIFACTS.find(x => x.id === artifactId);
+  if(!a) return;
+  const st = getOrInitDeepState(a);
+  // card_id is REQUIRED for a meaningful save (per SPEC_DRAFT_v3.md sec.3.2
+  // step 7 - without a card_id the curation doesn't produce a museum-
+  // visible attachment). Empty is allowed only when the operator is
+  // clearing an existing card_id. Warn-but-don't-block in that case.
+  if(!st.cardId && st.selected.size > 0){
+    if(!confirm("No Card ID set. Save these Deep Dive tags anyway? They won't be visible on the museum side without a card_id.")){
+      return;
+    }
+  }
+  const selected = [];
+  for(const key of st.selected){
+    const idx = key.indexOf(':');
+    if(idx < 0) continue;
+    selected.push([key.slice(0, idx), key.slice(idx + 1)]);
+  }
+  const freeform = [];
+  for(const key of st.freeform){
+    const idx = key.indexOf(':');
+    if(idx < 0) continue;
+    freeform.push([key.slice(0, idx), key.slice(idx + 1)]);
+  }
+  const btn = document.getElementById('ddSaveBtn');
+  if(btn) btn.disabled = true;
+  try{
+    const resp = await api('/api/artifact-deep-dive-save', {
+      id: artifactId,
+      selected,
+      card_id: st.cardId,
+      freeform,
+    });
+    // Clear draft and reload fresh state from DB.
+    DEEP_DIVE_STATE.delete(artifactId);
+    await loadDb();
+    renderDetail(artifactId);
+    vaultRender();
+    toast(`Deep Dive saved (+${resp.deep_added.length}/-${resp.deep_removed.length}, card_id=${resp.card_id||'(none)'})`, 'ok');
+  }catch(e){
+    if(btn) btn.disabled = false;
+    toast('Deep Dive save failed: ' + e.message, 'err');
+  }
 }
 async function artifactRelease(id){
   try{ await api('/api/artifact-release', {id: id}); await loadDb(); vaultRender(); toast('Released','ok'); }

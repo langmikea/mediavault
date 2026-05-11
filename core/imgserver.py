@@ -38,8 +38,17 @@ from io import BytesIO
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-# Helper module from v0.2 — kept untouched.
-from imgserver_extensions import handle_artifact_register, handle_asset_raw  # noqa: E402
+# Helper module — extension handlers live alongside imgserver.py and are
+# imported here rather than inlined. handle_artifact_register and
+# handle_asset_raw are unchanged from v0.2; handle_deep_dive_vocabulary
+# and handle_artifact_deep_dive_save were added in Phase 4 of the museum's
+# Deep Dive feature (see SPEC_DRAFT_v3.md §5 Phase 4 in the museum repo).
+from imgserver_extensions import (  # noqa: E402
+    handle_artifact_register,
+    handle_asset_raw,
+    handle_deep_dive_vocabulary,
+    handle_artifact_deep_dive_save,
+)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -1513,6 +1522,7 @@ GET_ROUTES = {
     "/api/queue":              handle_queue_list,
     "/api/tags":               handle_tags_list,
     "/api/fb-candidates":      handle_fb_candidates_get,
+    "/api/deep-dive-vocabulary": handle_deep_dive_vocabulary,  # from imgserver_extensions (Phase 4)
     "/ext/hr_manager_renderer.js": handle_renderer_js,
 }
 
@@ -1532,6 +1542,7 @@ POST_ROUTES = {
     "/api/artifact-delete":          handle_artifact_delete,
     "/api/artifact-requeue":         handle_artifact_requeue,
     "/api/artifact-register":        handle_artifact_register,   # from imgserver_extensions
+    "/api/artifact-deep-dive-save":  handle_artifact_deep_dive_save,  # from imgserver_extensions (Phase 4)
     "/api/thumbgen":                 handle_thumbgen,
     "/api/tag-create":               handle_tag_create,
     "/api/tag-update":               handle_tag_update,
