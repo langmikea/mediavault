@@ -6,6 +6,35 @@ which files moved, why.
 
 Entries newest first.
 
+## v0.5.1 — 2026-05-11
+
+schema: add `archived_at TEXT` column to the `artifacts` table.
+
+Aligns the live SQLite schema with SPEC.md §6, which has declared
+`archived_at` since the v0.5 spec reconciliation but where the column
+was never actually present in `core/mediavault.sqlite`. The drift
+surfaced for the third time during the Phase v5-3 / v5-4 live test as
+the museum-side export script's loud diagnostic (v5.1 Patch 8 in
+`weird-baby-museum/docs/deep-dive-review/SPEC_DRAFT_v5_1.md`) fired:
+"expected column `archived_at` on artifacts, not present". The right
+fix is to add the column rather than continue working around it.
+
+Patch landed by `_cowork/v07_add_archived_at_column.py`:
+
+  ALTER TABLE artifacts ADD COLUMN archived_at TEXT;
+
+Default is `NULL` for all 85 existing rows (correct: they are not
+archived). SPEC §4.1 documents `archived_at` as "saved-but-hidden,
+always reversible", so `NULL` is the natural "not archived" sentinel
+and matches the convention used by `released_at`. The script is
+idempotent — re-running after the column exists is a no-op.
+
+Out of scope, deferred: reconciling the live `status` CHECK constraint
+(`'inbox','vault','released','archived'`) against the SPEC enum
+(`inbox|vault|released|deleted`). That broader status-enum drift
+remains on the Phase-2 cleanup punchlist; this commit is the single
+column addition that unblocks the museum-side export script.
+
 ## v0.5.1 — 2026-05-08 (continued)
 
 docs: git-init closure report from session 2026-05-08 absorbed into
