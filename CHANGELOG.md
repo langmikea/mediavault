@@ -6,6 +6,42 @@ which files moved, why.
 
 Entries newest first.
 
+## v0.5.2 — 2026-05-11
+
+chore(test): phase v5-6 Ops seed — tag and release the Reverend
+artifact (`MV-20260510-001`).
+
+Operator-testing-deferred-to-Ops: Mike declined to do the curation pass
+manually for the Phase v5-6 export+render verification, so this seeding
+script substitutes. The goal is to put real Phase v5-6-shaped tag data
+on MV-20260510-001 so the museum's export+render pipeline can be
+exercised end-to-end against a released artifact carrying the new
+`exhibit:`, `mood:`, `motif:`, `theme:`, and `era:` namespaces.
+
+Patch landed by `_cowork/v08_phase_v5_6_seed_reverend.py`:
+
+  - appends six slugs to the artifact's `tags` JSON array
+    (`exhibit:hunter_root`, `mood:snarky`, `mood:defiant`,
+    `motif:pink-hats`, `theme:resistance`, `era:arkansas`),
+    preserving the four existing slugs;
+  - creates matching rows in the `tags` vocabulary table with
+    category and display_name set (column list built dynamically
+    from `PRAGMA table_info` so the live `is_proposed` column —
+    still physically present even though SPEC §6 has removed it —
+    is populated with `0`);
+  - flips `status` from `vault` to `released` and stamps
+    `released_at` with the current UTC timestamp.
+
+Single transaction, single Python file, no MV code changes (no edits
+to `mediavault.html`, `imgserver.py`, `imgserver_extensions.py`,
+`attention_rules.py`, etc.). Idempotent — re-running detects existing
+state and reports "no new tags to add," "no new vocabulary entries,"
+and "already released" with no row-count change.
+
+Out of scope: any other artifact; the museum side of the export+render
+pipeline; the spec-vs-live `is_proposed` drift (the column is still in
+the live schema but the script tolerates either).
+
 ## v0.5.1 — 2026-05-11
 
 schema: add `archived_at TEXT` column to the `artifacts` table.
