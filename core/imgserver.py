@@ -11,8 +11,18 @@ Single-file localhost HTTP server backing the MediaVault UI.
 - Talks to core/mediavault.sqlite (v0.4 schema: flat tags JSON array,
   status / storage_mode columns, tags vocabulary table).
 - Imports two helpers from core/imgserver_extensions.py
-  (handle_artifact_register, handle_asset_raw); those modules are
-  unchanged from v0.2 and the brief explicitly says NOT to modify them.
+  (handle_artifact_register, handle_asset_raw). That module is a
+  peer of this one and is editable; per Criterion 3 (2026-05-18) any
+  earlier "do not modify" guidance about it is superseded by the
+  v2.1-target spec.
+
+SINGLE-WRITER RULE (spec §4.5 / §4.5.1):
+    ``artifacts.tags`` MUST be written ONLY through
+    ``write_artifact_tags(conn, artifact_id, new_tags)`` in
+    ``core/artifact_tags.py``. Do NOT add a second SQL path that
+    UPDATEs or INSERTs ``artifacts.tags`` anywhere in MV. The grep
+    check at ``tools/check_single_tag_writer.py`` enforces this and
+    will fail the build if a second writer reappears.
 
 Run:
     python core/imgserver.py
@@ -48,6 +58,14 @@ from imgserver_extensions import (  # noqa: E402
     handle_artifact_register,
     handle_asset_raw,
     handle_deep_dive_vocabulary,
+)
+
+# §4.5 single coordinated writer for artifacts.tags. EVERY tag-write
+# in this file routes through write_artifact_tags; do not add another.
+from artifact_tags import (  # noqa: E402
+    write_artifact_tags,
+    validate_artifact_tags,
+    TagValidationError,
 )
 
 # ---------------------------------------------------------------------------
@@ -840,8 +858,19 @@ def handle_artifact_save(h: BaseHTTPRequestHandler) -> None:
     # "caller sent tags=[]". Only the latter should clear existing tags;
     # the former should leave them alone. Same contract as the other
     # content fields in the UPDATE branch below.
+    #
+    # Crit 3 (§4.5): tag validation is now strict §3.1 (no bare slugs).
+    # Pre-validation here gives us a clean canonical list to upsert
+    # novel vocab rows with; write_artifact_tags re-validates as part
+    # of the single-writer guarantee.
     tags_supplied = "tags" in fields
-    tags = validate_tags_json(fields.get("tags")) if tags_supplied else []
+    if tags_supplied:
+        try:
+            tags = validate_artifact_tags(fields.get("tags"))
+        except TagValidationError as e:
+            return send_error(h, 400, str(e))
+    else:
+        tags = []
 
     storage_mode = fields.get("storage_mode") or "vaulted"
     local_path = fields.get("local_asset_path") or raw_path
@@ -911,11 +940,13 @@ def handle_artifact_save(h: BaseHTTPRequestHandler) -> None:
             # Tags follow the same rule: only touch tags if the caller
             # explicitly included a "tags" key in fields. Omitting tags
             # from the payload leaves the existing tag set alone.
+            #
+            # Crit 3 (§4.5): tags are NEVER part of this UPDATE's SET clause.
+            # The single-writer rule routes every tag-write through
+            # write_artifact_tags below, which runs in the same connection /
+            # transaction as this UPDATE.
             sets: list = []
             args: list = []
-            if tags_supplied:
-                sets.append("tags=?")
-                args.append(json.dumps(tags))
             for k, v in AUTHORITATIVE.items():
                 sets.append(f"{k}=?")
                 args.append(v)
@@ -939,11 +970,17 @@ def handle_artifact_save(h: BaseHTTPRequestHandler) -> None:
         else:
             # Fresh save from the inbox queue. Default ingest_date to today
             # if the caller didn't set one, and bind both timestamps.
+            #
+            # Crit 3 (§4.5): tags is intentionally absent from the column
+            # list — the schema default ('[]') seeds the row and
+            # write_artifact_tags below sets the real tag set. This keeps
+            # the single-writer property: no INSERT INTO artifacts(...)
+            # in this codebase mentions the tags column.
             scalar = dict(fields)
             scalar.update(AUTHORITATIVE)
             scalar.setdefault("ingest_date", ingest_date)
-            cols = ["id", "tags", *ARTIFACT_FIELDS, "created_at", "updated_at"]
-            vals: list = [aid, json.dumps(tags),
+            cols = ["id", *ARTIFACT_FIELDS, "created_at", "updated_at"]
+            vals: list = [aid,
                           *[scalar.get(k) for k in ARTIFACT_FIELDS],
                           now, now]
             placeholders = ",".join(["?"] * len(cols))
@@ -951,11 +988,20 @@ def handle_artifact_save(h: BaseHTTPRequestHandler) -> None:
                 f"INSERT INTO artifacts({','.join(cols)}) VALUES({placeholders})",
                 vals,
             )
-        # v0.6 Item 8d follow-up: only touch usage counters when tags were
-        # actually supplied in this save. Otherwise we'd double-count on a
-        # pure-metadata save that leaves tags alone.
+        # Crit 3 (§4.5): the ONE tag-write for this handler. Runs after
+        # the INSERT or UPDATE above (the row now exists either way), in
+        # the same connection. write_artifact_tags handles dedupe, the
+        # added/removed diff against the row's current tags, and the
+        # usage-count cache refresh. No adjust_tag_usage call is needed
+        # — write_artifact_tags subsumes it.
         if tags_supplied:
-            adjust_tag_usage(conn, tags, [])
+            try:
+                write_artifact_tags(conn, aid, tags)
+            except TagValidationError as e:
+                # Pre-validation above should have caught this, but the
+                # single-writer is the authoritative gate — surface a 400
+                # if it ever fires here.
+                return send_error(h, 400, str(e))
         if qid is not None:
             # v0.5 bug fix: release-in-inbox must mark the queue row done, not
             # leave it in 'keep' (which made it look un-processed next session).
@@ -985,40 +1031,47 @@ def handle_artifact_update(h: BaseHTTPRequestHandler) -> None:
         if not row:
             return send_error(h, 404, "artifact not found")
 
-        sets = []
-        args: list = []
-        added: list[str] = []
-        removed: list[str] = []
+        # Crit 3 (§4.5): tags are NEVER part of this UPDATE's SET clause.
+        # They flow through write_artifact_tags below, in the same
+        # connection / transaction. Pre-validate now so we can register
+        # novel slugs as proposed before the write.
+        new_tags = None
         if "tags" in fields:
-            new_tags = validate_tags_json(fields["tags"])
-            old_tags = []
             try:
-                old_tags = json.loads(row["tags"] or "[]")
-            except Exception:
-                pass
-            old_set, new_set = set(old_tags), set(new_tags)
-            added = sorted(new_set - old_set)
-            removed = sorted(old_set - new_set)
+                new_tags = validate_artifact_tags(fields["tags"])
+            except TagValidationError as e:
+                return send_error(h, 400, str(e))
             existing = {r[0] for r in conn.execute("SELECT slug FROM tags").fetchall()}
-            for s in added:
+            for s in new_tags:
                 if s not in existing:
                     upsert_tag(conn, s, is_proposed=1)
-            sets.append("tags=?")
-            args.append(json.dumps(new_tags))
 
+        sets = []
+        args: list = []
         for k in ARTIFACT_FIELDS:
             if k in fields and k != "tags":
                 sets.append(f"{k}=?")
                 args.append(fields[k])
 
-        if not sets and not added and not removed:
+        if not sets and new_tags is None:
             return send_error(h, 400, "nothing to update")
 
-        sets.append("updated_at=?")
-        args.append(now_iso())
-        args.append(aid)
-        conn.execute(f"UPDATE artifacts SET {','.join(sets)} WHERE id=?", args)
-        adjust_tag_usage(conn, added, removed)
+        if sets:
+            sets.append("updated_at=?")
+            args.append(now_iso())
+            args.append(aid)
+            conn.execute(f"UPDATE artifacts SET {','.join(sets)} WHERE id=?", args)
+
+        added: list = []
+        removed: list = []
+        if new_tags is not None:
+            try:
+                result = write_artifact_tags(conn, aid, new_tags)
+            except TagValidationError as e:
+                return send_error(h, 400, str(e))
+            added = result["added"]
+            removed = result["removed"]
+
         conn.commit()
         send_json(h, 200, {"ok": True, "added": added, "removed": removed})
     finally:
@@ -1242,6 +1295,12 @@ def handle_tag_update(h: BaseHTTPRequestHandler) -> None:
                     "target_usage": existing["usage_count"] or 0,
                     "target_display_name": existing["display_name"],
                 })
+            # Crit 3 (§4.5): the rename's sweep over artifacts goes
+            # through the single coordinated writer. We seed the new
+            # vocab row with usage_count=0 — write_artifact_tags
+            # increments it per artifact as the sweep replaces the old
+            # slug with the new one, so the final cache value matches
+            # reality without any manual carry-over.
             conn.execute(
                 "INSERT INTO tags(slug, display_name, description, category, is_proposed, is_exclusive, usage_count, created_at) "
                 "VALUES(?,?,?,?,?,?,?, datetime('now'))",
@@ -1249,9 +1308,11 @@ def handle_tag_update(h: BaseHTTPRequestHandler) -> None:
                  body.get("description", row["description"]),
                  new_category,
                  row["is_proposed"], int(bool(new_is_exclusive)),
-                 row["usage_count"]),
+                 0),
             )
-            # Update each artifact carrying old slug
+            # Sweep: for each artifact carrying the old slug, build the
+            # new tag set and let write_artifact_tags handle the SQL
+            # write + usage_count diff.
             rows = conn.execute(
                 "SELECT id, tags FROM artifacts "
                 "WHERE EXISTS (SELECT 1 FROM json_each(artifacts.tags) WHERE value=?)",
@@ -1262,11 +1323,17 @@ def handle_tag_update(h: BaseHTTPRequestHandler) -> None:
                     arr = json.loads(ar["tags"])
                 except Exception:
                     continue
-                arr = sorted(set(new_slug if x == slug else x for x in arr))
-                conn.execute(
-                    "UPDATE artifacts SET tags=?, updated_at=? WHERE id=?",
-                    (json.dumps(arr), now_iso(), ar["id"]),
-                )
+                new_arr = [new_slug if x == slug else x for x in arr]
+                try:
+                    write_artifact_tags(conn, ar["id"], new_arr)
+                except TagValidationError as e:
+                    # An existing artifact carries a malformed tag — abort
+                    # the rename so the operator can address the data
+                    # before the sweep runs. The transaction is rolled
+                    # back by send_error's early return + conn close.
+                    conn.rollback()
+                    return send_error(h, 400,
+                        f"artifact {ar['id']} carries invalid tag: {e}")
             conn.execute("DELETE FROM tags WHERE slug=?", (slug,))
             slug = new_slug
         else:
@@ -1332,7 +1399,19 @@ def handle_tag_reject(h: BaseHTTPRequestHandler) -> None:
             conn.commit()
             return send_json(h, 200, {"ok": True, "slug": slug, "mode": mode})
 
-        # remove or replace: walk artifacts carrying this tag
+        # Crit 3 (§4.5): the remove/replace sweep over artifacts goes
+        # through the single coordinated writer. write_artifact_tags
+        # handles the per-artifact diff and the usage_count cache
+        # delta automatically — no manual carry-over needed (the
+        # old slug's count decrements to 0 as we strip it from each
+        # artifact, and the replacement's count increments per swap).
+        if mode == "replace":
+            # ensure replacement exists in the vocab BEFORE the sweep,
+            # so write_artifact_tags' usage_count UPDATE lands on a
+            # real row.
+            if not conn.execute("SELECT slug FROM tags WHERE slug=?", (repl,)).fetchone():
+                upsert_tag(conn, repl)
+
         rows = conn.execute(
             "SELECT id, tags FROM artifacts "
             "WHERE EXISTS (SELECT 1 FROM json_each(artifacts.tags) WHERE value=?)",
@@ -1348,24 +1427,14 @@ def handle_tag_reject(h: BaseHTTPRequestHandler) -> None:
                 new = [x for x in arr if x != slug]
             else:
                 new = [repl if x == slug else x for x in arr]
-            new = sorted(set(new))
-            conn.execute(
-                "UPDATE artifacts SET tags=?, updated_at=? WHERE id=?",
-                (json.dumps(new), now_iso(), ar["id"]),
-            )
+            try:
+                write_artifact_tags(conn, ar["id"], new)
+            except TagValidationError as e:
+                conn.rollback()
+                return send_error(h, 400,
+                    f"artifact {ar['id']} carries invalid tag: {e}")
             affected += 1
 
-        if mode == "replace":
-            # ensure replacement exists
-            if not conn.execute("SELECT slug FROM tags WHERE slug=?", (repl,)).fetchone():
-                upsert_tag(conn, repl)
-            # transfer usage count
-            old_uc = conn.execute("SELECT usage_count FROM tags WHERE slug=?", (slug,)).fetchone()
-            if old_uc:
-                conn.execute(
-                    "UPDATE tags SET usage_count=usage_count+? WHERE slug=?",
-                    (old_uc[0], repl),
-                )
         conn.execute("DELETE FROM tags WHERE slug=?", (slug,))
         conn.commit()
         send_json(h, 200, {"ok": True, "slug": slug, "mode": mode, "affected": affected})
@@ -1416,6 +1485,11 @@ def handle_tag_merge(h: BaseHTTPRequestHandler) -> None:
         if not conn.execute("SELECT slug FROM tags WHERE slug=?", (target,)).fetchone():
             upsert_tag(conn, target)
 
+        # Crit 3 (§4.5): the merge sweep over artifacts goes through
+        # the single coordinated writer. write_artifact_tags handles
+        # the per-artifact diff and the per-slug usage_count delta;
+        # the final full-table recompute below remains as
+        # defense-in-depth (§3.2 backstop-style).
         affected = 0
         for src in sources:
             rows = conn.execute(
@@ -1428,15 +1502,19 @@ def handle_tag_merge(h: BaseHTTPRequestHandler) -> None:
                     arr = json.loads(ar["tags"] or "[]")
                 except Exception:
                     arr = []
-                arr = sorted(set(target if x == src else x for x in arr))
-                conn.execute(
-                    "UPDATE artifacts SET tags=?, updated_at=? WHERE id=?",
-                    (json.dumps(arr), now_iso(), ar["id"]),
-                )
+                new_arr = [target if x == src else x for x in arr]
+                try:
+                    write_artifact_tags(conn, ar["id"], new_arr)
+                except TagValidationError as e:
+                    conn.rollback()
+                    return send_error(h, 400,
+                        f"artifact {ar['id']} carries invalid tag: {e}")
                 affected += 1
             conn.execute("DELETE FROM tags WHERE slug=?", (src,))
 
-        # Recompute usage counts from scratch for sanity.
+        # Recompute usage counts from scratch for sanity. The single
+        # writer keeps the cache correct row-by-row; this full recompute
+        # is the §3.2 backstop, not the authority.
         conn.execute(
             "UPDATE tags SET usage_count = ("
             "  SELECT COUNT(*) FROM artifacts a, json_each(a.tags) j "
@@ -1470,6 +1548,10 @@ def handle_tag_bulk_delete(h: BaseHTTPRequestHandler) -> None:
 
     conn = db_conn()
     try:
+        # Crit 3 (§4.5): the bulk-delete sweep over artifacts goes
+        # through the single coordinated writer. write_artifact_tags
+        # handles the per-artifact diff and the usage_count delta;
+        # the final full-table recompute remains as defense-in-depth.
         per_slug = {}
         for slug in slugs:
             rows = conn.execute(
@@ -1482,11 +1564,13 @@ def handle_tag_bulk_delete(h: BaseHTTPRequestHandler) -> None:
                     arr = json.loads(ar["tags"] or "[]")
                 except Exception:
                     arr = []
-                new = sorted(set(x for x in arr if x != slug))
-                conn.execute(
-                    "UPDATE artifacts SET tags=?, updated_at=? WHERE id=?",
-                    (json.dumps(new), now_iso(), ar["id"]),
-                )
+                new = [x for x in arr if x != slug]
+                try:
+                    write_artifact_tags(conn, ar["id"], new)
+                except TagValidationError as e:
+                    conn.rollback()
+                    return send_error(h, 400,
+                        f"artifact {ar['id']} carries invalid tag: {e}")
             per_slug[slug] = len(rows)
             conn.execute("DELETE FROM tags WHERE slug=?", (slug,))
 

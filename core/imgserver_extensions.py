@@ -1,7 +1,20 @@
 """
 imgserver_extensions.py
 =======================
-Handler functions that extend imgserver.py without rewriting it.
+Handler functions that live alongside imgserver.py. This module is a
+PEER of imgserver.py and is editable. Earlier sessions treated it as
+a "delivered v0.2 script — do not modify" carry-over from an April
+2026 packaging task; that constraint is superseded by the BUILD-phase
+spec (DATA_ARCHITECTURE_SPEC_v2.1-target.md). Edit freely — the spec,
+not packaging history, is the authority.
+
+SINGLE-WRITER RULE (spec §4.5 / §4.5.1):
+    ``artifacts.tags`` MUST be written ONLY through
+    ``write_artifact_tags(conn, artifact_id, new_tags)`` in
+    ``core/artifact_tags.py``. ``handle_artifact_register`` below is
+    one of the three legitimate callers (the register endpoint per
+    §4.5); do NOT add another SQL path that UPDATEs or INSERTs
+    ``artifacts.tags`` in this file.
 
   1. handle_artifact_register(handler) - POST /api/artifact-register
        Creates an artifacts row pointing at any on-disk path. Bypasses
@@ -50,16 +63,15 @@ Safety properties:
 - handle_artifact_register validates enum values against the artifacts schema
   before inserting, so bad data can't poison the DB.
 
-v0.5 NOTES (design sec.8):
-- DOMAIN_ENUM and the per-domain prefix mapping are deleted. The artifacts
-  table never had a 'domain' column on disk; the v0.4 migration dropped it.
-- All `tags_*` per-category columns are gone. Tags are a single JSON array
-  in `artifacts.tags`. Callers send them as `tags: ["slug", ...]` (or as a
-  pre-encoded JSON string).
-- ID format is MV-YYYYMMDD-NNN; the id_sequence table key is `date_str`.
-- author_name, tags_permission, permission_contact, permission_evidence_path
-  columns are dropped. Callers that used to send `author_name` should send
-  an `author:<slug>` pill in the `tags` array instead.
+v0.5 BACKGROUND (kept for git-history continuity):
+    DOMAIN_ENUM, per-domain prefix mapping, and the per-category
+    ``tags_*`` columns are gone (v0.4 migration). Tags are a single
+    JSON array in ``artifacts.tags``; callers send
+    ``tags: ["namespace:value", ...]`` and the register endpoint
+    routes them through ``write_artifact_tags`` (§4.5).
+    ID format: MV-YYYYMMDD-NNN, id_sequence keyed by ``date_str``.
+    ``author_name`` and friends are dropped — send an ``author:<slug>``
+    tag instead.
 """
 
 from __future__ import annotations
@@ -71,6 +83,11 @@ import re
 import sqlite3
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
+
+# §4.5 single coordinated writer for artifacts.tags. Imported here so
+# handle_artifact_register (a legitimate writer #1, the register endpoint)
+# can route tag-writes through it instead of an inline SQL path.
+from artifact_tags import write_artifact_tags, TagValidationError
 
 # Same path imgserver.py uses. Kept in sync by convention.
 BASE = Path(r"C:\AI\Platform\MediaVault")
@@ -306,7 +323,17 @@ def handle_artifact_register(handler) -> None:
     except ValueError as e:
         return _json_response(handler, 400, {"ok": False, "error": str(e)})
 
-    tags = _coerce_tags(body.get("tags"))
+    # Crit 3 (§4.5 / §3.2): strict §3.1 validation at the register
+    # endpoint. Bare slugs and otherwise-malformed tags are rejected with
+    # a 400, never silently dropped (which the legacy _coerce_tags did).
+    # Pre-validation here gives us a clean canonical list to upsert novel
+    # vocab rows with; write_artifact_tags below re-validates as part of
+    # the single-writer guarantee.
+    try:
+        from artifact_tags import validate_artifact_tags
+        tags = validate_artifact_tags(body.get("tags"))
+    except TagValidationError as e:
+        return _json_response(handler, 400, {"ok": False, "error": str(e)})
 
     # --- DB insert --------------------------------------------------------
     from datetime import date, datetime
@@ -349,6 +376,12 @@ def handle_artifact_register(handler) -> None:
                         [s, s.replace("_", " ").title(), None, None, 1, 0],
                     )
 
+            # Crit 3 (§4.5): tags is intentionally absent from this
+            # INSERT's column list. The schema default ('[]') seeds the
+            # row and write_artifact_tags below sets the real tag set,
+            # which keeps the single-writer property (no INSERT INTO
+            # artifacts(... tags ...) anywhere in MV) and routes the
+            # usage_count bump through the shared cache update.
             conn.execute(
                 """INSERT INTO artifacts(
                     id, source_url, source_platform, ingest_source, ingest_date,
@@ -357,10 +390,9 @@ def handle_artifact_register(handler) -> None:
                     post_date, post_date_confidence, capture_date,
                     status,
                     description_short, description_long, extracted_text,
-                    tags,
                     confidence_flags, notes,
                     created_at, updated_at
-                ) VALUES(?,?,?,?,?, ?,?,?,?, ?,?, ?,?,?, ?, ?,?,?, ?, ?,?, ?,?)""",
+                ) VALUES(?,?,?,?,?, ?,?,?,?, ?,?, ?,?,?, ?, ?,?,?, ?,?, ?,?)""",
                 [
                     artifact_id,
                     body.get("source_url"),
@@ -380,19 +412,23 @@ def handle_artifact_register(handler) -> None:
                     body.get("description_short"),
                     body.get("description_long"),
                     body.get("extracted_text"),
-                    json.dumps(tags),
                     body.get("confidence_flags"),
                     body.get("notes"),
                     now_iso,
                     now_iso,
                 ],
             )
-            # Bump usage_count for each tag we attached.
-            for s in tags:
-                conn.execute(
-                    "UPDATE tags SET usage_count = usage_count + 1 WHERE slug=?",
-                    [s],
-                )
+            # Crit 3 (§4.5): the ONE tag-write for this handler. Runs
+            # after the INSERT above (row now exists with empty tags),
+            # in the same connection. write_artifact_tags subsumes the
+            # per-slug usage_count bump that the old loop did.
+            try:
+                write_artifact_tags(conn, artifact_id, tags)
+            except TagValidationError as e:
+                # Pre-validation above should have caught this; surface
+                # a 400 if the single-writer gate ever fires here.
+                return _json_response(handler, 400,
+                    {"ok": False, "error": str(e)})
             conn.commit()
             return _json_response(handler, 200, {"ok": True, "id": artifact_id, "tags": tags})
         finally:
