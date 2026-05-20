@@ -182,6 +182,82 @@ def display_name_for(slug: str) -> str:
     return slug.replace("_", " ").title()
 
 
+# ---------------------------------------------------------------------------
+# Vocabulary registry helpers (Phase 2.1 of source-of-truth refactor)
+# ---------------------------------------------------------------------------
+# §5.4 of DATA_ARCHITECTURE_SPEC_v2.1-target.md: namespace / tier /
+# display_name metadata lives in the `vocabulary` registry table — *not* in
+# the legacy `tags.category` / `display_name` columns. Read-side callers
+# (autocomplete, tag-list endpoint, enrich-prompt vocab pull) source
+# namespace metadata via the helpers below. The demoted `tags` table is
+# read only for slug + usage_count (the columns that survive the §5.2
+# schema operation that Phase 2.5 will run later).
+
+def namespace_of(slug: str | None) -> str | None:
+    """Return the namespace prefix of a slug, or None if it has no prefix.
+
+    The slug grammar (`slugify`) permits one optional `namespace:` prefix.
+    For `album:arkansas` this returns `'album'`; for the legacy bare slug
+    `arkansas` this returns `None`.
+    """
+    if not slug or ":" not in slug:
+        return None
+    ns, _sep, _local = slug.partition(":")
+    return ns or None
+
+
+def load_vocabulary_meta(conn) -> dict[str, dict]:
+    """Load the §5.4 `vocabulary` registry, keyed by namespace.
+
+    Returns a mapping of namespace → {display_name, tier, sort_order,
+    retired_at}. Used by the read-side call sites to attach namespace
+    metadata to per-slug rows without depending on the registry-era
+    columns of the demoted `tags` table.
+    """
+    rows = conn.execute(
+        "SELECT namespace, display_name, tier, sort_order, retired_at "
+        "FROM vocabulary"
+    ).fetchall()
+    return {r["namespace"]: dict(r) for r in rows}
+
+
+def vocab_row_for_slug(slug: str, usage_count: int,
+                      ns_meta: dict[str, dict]) -> dict:
+    """Build a vocab-row dict for a slug using vocabulary-registry metadata.
+
+    Returns the same shape the v0.5 `/api/tags` endpoint produced — so
+    existing UI / prompt callers continue to work — but with namespace
+    metadata sourced from the §5.4 `vocabulary` table instead of the
+    demoted `tags`-table registry-era columns.
+
+    Fields produced: `slug`, `display_name`, `category`, `is_exclusive`,
+    `is_proposed`, `usage_count`, `description`. `category` carries the
+    namespace prefix of the slug (the new model's closest analogue to the
+    legacy `tags.category` column). Bare slugs (no namespace prefix)
+    carry `category=None`. `is_proposed` is always 0 (workflow retired
+    per Decision Brief §9.3 Q2). `is_exclusive` is always 0 (the legacy
+    per-tag exclusivity flag does not exist in the new registry).
+    `description` is always None (no longer tracked per-tag).
+    """
+    ns = namespace_of(slug)
+    meta = ns_meta.get(ns) if ns else None
+    ns_display = (meta or {}).get("display_name") if meta else None
+    if ns and ns_display:
+        local = slug.split(":", 1)[1]
+        display_name = f"{ns_display}: {display_name_for(local)}"
+    else:
+        display_name = display_name_for(slug)
+    return {
+        "slug": slug,
+        "display_name": display_name,
+        "category": ns,
+        "is_exclusive": 0,
+        "is_proposed": 0,
+        "usage_count": usage_count or 0,
+        "description": None,
+    }
+
+
 def validate_tags_json(value) -> list[str]:
     """Coerce input to a list of valid slugs (deduped, sorted)."""
     if value is None:
@@ -371,26 +447,36 @@ def handle_queue_list(h: BaseHTTPRequestHandler) -> None:
 
 
 def handle_tags_list(h: BaseHTTPRequestHandler) -> None:
+    # Phase 2.1 (source-of-truth refactor): namespace metadata is sourced
+    # from the §5.4 `vocabulary` registry, not the registry-era columns of
+    # the demoted `tags` table. The cache is the slug-list source and
+    # provides `usage_count`; everything else is derived from `vocabulary`
+    # via `vocab_row_for_slug`.
     qs = parse_qs(urlparse(h.path).query)
     proposed_only = qs.get("proposed_only", ["0"])[0] == "1"
-    # v0.5: filter by category. Accept legacy "group" alias for one release.
-    category = qs.get("category", [None])[0] or qs.get("group", [None])[0]
+    # `category` is honoured as a namespace filter; the legacy "group"
+    # query-param alias is retained for the rolling restart.
+    namespace = qs.get("category", [None])[0] or qs.get("group", [None])[0]
     min_usage = int(qs.get("min_usage", ["0"])[0] or "0")
-    where = ["1=1"]
-    args: list = []
+    # The is_proposed workflow is retired (Decision Brief §9.3 Q2).
+    # `proposed_only=1` now returns an empty rowset so older clients fail
+    # visibly rather than silently receiving the full vocabulary.
     if proposed_only:
-        where.append("is_proposed=1")
-    if category:
-        where.append("category=?")
-        args.append(category)
-    if min_usage > 0:
-        where.append("usage_count >= ?")
-        args.append(min_usage)
-    sql = f"SELECT * FROM tags WHERE {' AND '.join(where)} ORDER BY usage_count DESC, slug"
+        return send_json(h, 200, {"ok": True, "rows": []})
     conn = db_conn()
     try:
-        rows = conn.execute(sql, args).fetchall()
-        send_json(h, 200, {"ok": True, "rows": [dict(r) for r in rows]})
+        rows = conn.execute(
+            "SELECT slug, usage_count FROM tags "
+            "WHERE usage_count >= ? "
+            "ORDER BY usage_count DESC, slug",
+            [min_usage],
+        ).fetchall()
+        ns_meta = load_vocabulary_meta(conn)
+        result = [vocab_row_for_slug(r["slug"], r["usage_count"], ns_meta)
+                  for r in rows]
+        if namespace:
+            result = [r for r in result if r["category"] == namespace]
+        send_json(h, 200, {"ok": True, "rows": result})
     finally:
         conn.close()
 
@@ -728,12 +814,22 @@ def handle_enrich(h: BaseHTTPRequestHandler) -> None:
             ej = {}
         ej = _upgrade_v04_enrichment_to_pill_states(ej)
 
-        vocab_rows = conn.execute(
-            "SELECT slug, display_name, category FROM tags "
-            "WHERE is_proposed=0 AND (category IS NULL OR category != 'deprecated') "
-            "ORDER BY category IS NULL, category, usage_count DESC, slug "
+        # Phase 2.1: namespace metadata comes from the §5.4 vocabulary
+        # registry; the demoted `tags` table is the slug-list source for
+        # `slug` + `usage_count` only. The legacy filters on
+        # `is_proposed=0` and `category != 'deprecated'` are gone —
+        # is_proposed is retired (Decision Brief §9.3 Q2) and the
+        # `deprecated` category was a column-value flag whose role is
+        # served by the `retired_at` field on the vocabulary registry
+        # (already filtered out at namespace level when meta is absent).
+        raw_rows = conn.execute(
+            "SELECT slug, usage_count FROM tags "
+            "ORDER BY usage_count DESC, slug "
             "LIMIT 300"
         ).fetchall()
+        ns_meta = load_vocabulary_meta(conn)
+        vocab_rows = [vocab_row_for_slug(r["slug"], r["usage_count"], ns_meta)
+                      for r in raw_rows]
         prompt = _build_enrich_prompt_v05(row, ej, vocab_rows)
 
         # If no API key, just return the prompt (caller can invoke offline).
