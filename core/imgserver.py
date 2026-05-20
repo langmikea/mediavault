@@ -282,14 +282,28 @@ def upsert_tag(conn: sqlite3.Connection, slug: str,
                category: str | None = None,
                is_proposed: int = 0,
                is_exclusive: int = 0) -> None:
-    """Insert tag if missing; v0.5 uses category (not group_name)."""
+    """Insert a tag-cache row if missing.
+
+    Phase 2.2 of the source-of-truth refactor: the `tags` table is the
+    per-value usage-count cache (post-§5.2 demotion). Only the columns
+    that survive the demotion are written here — `slug`, `usage_count`
+    (defaulted to 0), `created_at` (now). Namespace metadata
+    (display_name, category/namespace, exclusivity) lives in the §5.4
+    `vocabulary` registry and never travels with the cache row.
+
+    The `display_name` / `category` / `is_proposed` / `is_exclusive`
+    parameters are retained in the signature for backward compatibility
+    with v0.5 callers (every existing call site passes them by keyword)
+    and are accepted-and-ignored.
+    """
+    # Accept-and-ignore the v0.5 metadata parameters (see docstring).
+    del display_name, category, is_proposed, is_exclusive
     row = conn.execute("SELECT slug FROM tags WHERE slug=?", (slug,)).fetchone()
     if row is None:
         conn.execute(
-            "INSERT INTO tags(slug, display_name, description, category, is_proposed, is_exclusive, usage_count) "
-            "VALUES(?,?,?,?,?,?,0)",
-            (slug, display_name or display_name_for(slug), None, category,
-             int(is_proposed), int(is_exclusive)),
+            "INSERT INTO tags(slug, usage_count, created_at) "
+            "VALUES (?, 0, datetime('now'))",
+            (slug,),
         )
 
 

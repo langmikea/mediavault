@@ -374,16 +374,19 @@ def handle_artifact_register(handler) -> None:
                     "id": artifact_id,
                 })
 
-            # Auto-create any novel slug as proposed so the operator notices it
-            # in Vocab Admin. Mirrors imgserver.py's handle_artifact_save.
+            # Phase 2.2 of the source-of-truth refactor: novel slugs are
+            # tracked in `tags` as a per-value usage-count cache only.
+            # Namespace metadata (display_name, namespace/tier) lives in
+            # the §5.4 `vocabulary` registry; it never travels with the
+            # cache row. The legacy `is_proposed=1` flag is no longer
+            # written — the workflow is retired (Decision Brief §9.3 Q2).
             existing = {r[0] for r in conn.execute("SELECT slug FROM tags").fetchall()}
             for s in tags:
                 if s not in existing:
                     conn.execute(
-                        "INSERT INTO tags(slug, display_name, description, "
-                        "category, is_proposed, is_exclusive, usage_count) "
-                        "VALUES(?,?,?,?,?,?,0)",
-                        [s, s.replace("_", " ").title(), None, None, 1, 0],
+                        "INSERT INTO tags(slug, usage_count, created_at) "
+                        "VALUES (?, 0, datetime('now'))",
+                        [s],
                     )
 
             # Crit 3 (§4.5): tags is intentionally absent from this

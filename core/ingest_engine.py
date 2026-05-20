@@ -105,17 +105,30 @@ def next_id(conn):
 
 def upsert_tag(conn, slug, display_name=None, category=None, is_proposed=0,
                is_exclusive=0):
-    """Insert a tag row if missing. v0.5: category + is_exclusive (group_name
-    column is gone). Returns the slug on success."""
+    """Insert a tag-cache row if missing. Returns the slug on success.
+
+    Phase 2.2 of the source-of-truth refactor: the `tags` table is a
+    per-value usage-count cache (post-§5.2 demotion). Only the columns
+    that survive the demotion are written here — `slug`, `usage_count`
+    (defaulted to 0), `created_at` (now). Namespace metadata lives in
+    the §5.4 `vocabulary` registry and never travels with the cache
+    row.
+
+    The `display_name` / `category` / `is_proposed` / `is_exclusive`
+    parameters are retained in the signature for backward compatibility
+    with v0.5 callers; they are accepted-and-ignored.
+    """
     slug = slugify(slug)
     if not slug:
         return None
-    display = display_name or " ".join(w.capitalize() for w in slug.split("_"))
-    conn.execute("""
-        INSERT INTO tags (slug, display_name, category, is_proposed, is_exclusive, usage_count)
-        VALUES (?, ?, ?, ?, ?, 0)
-        ON CONFLICT(slug) DO NOTHING
-    """, (slug, display, category, int(is_proposed), int(is_exclusive)))
+    # Accept-and-ignore the v0.5 metadata parameters (see docstring).
+    del display_name, category, is_proposed, is_exclusive
+    conn.execute(
+        "INSERT INTO tags (slug, usage_count, created_at) "
+        "VALUES (?, 0, datetime('now')) "
+        "ON CONFLICT(slug) DO NOTHING",
+        (slug,),
+    )
     return slug
 
 
