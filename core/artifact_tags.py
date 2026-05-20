@@ -129,12 +129,16 @@ def write_artifact_tags(conn: sqlite3.Connection,
       diff: ``+1`` on each added slug, ``-1`` (floored at 0) on each
       removed slug. The cache is §5.2's demoted usage-count cache.
 
-    Does NOT register novel slugs in the vocabulary. Callers that
-    want a novel slug to surface in Vocab Admin (e.g. fresh inbox
-    saves, register-endpoint POSTs) should ``upsert_tag(..., is_proposed=1)``
-    before calling this writer. Doing the upsert here would couple
-    every Vocab Admin sweep to the upsert path, which is wrong —
-    sweeps mutate existing vocab and shouldn't auto-create new rows.
+    Does NOT register novel slugs in the cache. Callers that want a
+    novel slug to surface in Vocab Admin (e.g. fresh inbox saves,
+    register-endpoint POSTs) should ``upsert_tag(conn, slug)`` before
+    calling this writer. Doing the upsert here would couple every
+    Vocab Admin sweep to the upsert path, which is wrong — sweeps
+    mutate existing cache rows and shouldn't auto-create new ones.
+
+    Phase 2.2 note: the `is_proposed=1` kwarg that v0.5/v0.6 callers
+    used to pass into `upsert_tag` is retired (Decision Brief §9.3 Q2);
+    `upsert_tag` accepts the parameter for back-compat but ignores it.
     """
     # Validate everything first — abort before any write if any tag fails.
     # §3.2: reject malformed, don't silently drop.

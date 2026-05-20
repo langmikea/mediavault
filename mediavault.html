@@ -2175,10 +2175,10 @@ function _installVocabColResizers(){
 }
 // =================================================================
 
-async function tagAccept(slug){
-  try{ await api('/api/tag-accept', {slug: slug}); await loadTags(); await loadDb(); vocabRender(); vaultRender(); toast('Accepted','ok'); }
-  catch(e){ toast('Accept failed: '+e.message,'err'); }
-}
+// Phase 2.3 (source-of-truth refactor §4.4.C) removed `tagAccept()` and
+// its /api/tag-accept route. The v0.6 UI already retired the ACCEPT
+// button (Item 8d follow-up C4); this drop removes the dead JS helper.
+
 // v0.6 Item 6: unified per-row DELETE. Routes through /api/tag-bulk-delete
 // for a single code path whether the tag has artifacts or not. Uses the
 // in-app modal (not native confirm()) so ESC cancels.

@@ -895,7 +895,7 @@ def handle_enrich(h: BaseHTTPRequestHandler) -> None:
             for raw in ps.keys():
                 s = slugify(raw)
                 if s:
-                    upsert_tag(conn, s, is_proposed=1)
+                    upsert_tag(conn, s)
 
         conn.execute(
             "UPDATE ingest_queue SET enrichment_json=?, status='enriched', updated_at=? "
@@ -1002,7 +1002,7 @@ def handle_artifact_save(h: BaseHTTPRequestHandler) -> None:
         existing = {r[0] for r in conn.execute("SELECT slug FROM tags").fetchall()}
         for s in tags:
             if s not in existing:
-                upsert_tag(conn, s, is_proposed=1)
+                upsert_tag(conn, s)
 
         status = "released" if release_now else (fields.get("status") or "vault")
         released_at = now_iso() if release_now else None
@@ -1154,7 +1154,7 @@ def handle_artifact_update(h: BaseHTTPRequestHandler) -> None:
             existing = {r[0] for r in conn.execute("SELECT slug FROM tags").fetchall()}
             for s in new_tags:
                 if s not in existing:
-                    upsert_tag(conn, s, is_proposed=1)
+                    upsert_tag(conn, s)
 
         sets = []
         args: list = []
@@ -1300,74 +1300,58 @@ def handle_thumbgen(h: BaseHTTPRequestHandler) -> None:
 
 def handle_tag_create(h: BaseHTTPRequestHandler) -> None:
     """
-    v0.6 contract:
-      Required: slug (string, slugified).
-      Optional: display_name, description, category, is_proposed, is_exclusive.
-      Missing category → row stored with category=NULL (uncategorized;
-        operator can categorise via Vocab Admin).
-      Legacy "group_name" body key is still accepted as an alias for
-        "category" but is deprecated and will be removed in a future release.
+    Create a tag-cache row.
 
-    Schema reference: tags(slug PK, display_name, description, category,
-      is_exclusive, is_proposed, usage_count, created_at).  Writes here MUST
-      use the column name "category" — earlier v0.4 callers wrote "group_name"
-      which v0.5 dropped.  Do not reintroduce.
+    Phase 2.3 of the source-of-truth refactor: namespace metadata lives
+    in the §5.4 `vocabulary` registry -- never in the `tags` cache. The
+    handler now writes only the columns that survive the §5.2 schema
+    demotion (slug, usage_count, created_at).
+
+      Required: slug. The slug self-describes its namespace via the
+        `namespace:value` prefix (e.g. `album:arkansas`); slugify()
+        enforces the grammar.
+      Optional: display_name, description, category, group_name (alias),
+        is_proposed, is_exclusive. All accepted-and-ignored for backward
+        compatibility with the v0.6 UI's edit modal -- the cache row no
+        longer carries any of those fields.
+
+    Per-slug uniqueness is just the `slug` PRIMARY KEY now; the v0.6
+    composite (slug, category) uniqueness retires alongside the
+    `category` column in Phase 2.5.
     """
     body = read_body(h)
     slug = slugify(body.get("slug"))
     if not slug:
         return send_error(h, 400, "invalid slug")
-    display_name = body.get("display_name") or display_name_for(slug)
-    description = body.get("description")
-    # v0.5: "category" replaces "group_name". Accept either key from callers
-    # during the transition; prefer category when both are sent. v0.6 still
-    # honours the alias to keep older browser tabs functioning across a
-    # rolling restart.
-    category = body.get("category")
-    if category is None:
-        category = body.get("group_name")
-    if category is not None and not isinstance(category, str):
-        return send_error(h, 400, "category must be a string when provided")
-    if isinstance(category, str) and not category.strip():
-        category = None
-    # v0.6 Item 8d follow-up C3: category is now REQUIRED for new tags.
-    # Mike banned uncategorized entries — they clutter the pill wall. The
-    # client must pick a category from CATEGORY_ORDER (people, bands,
-    # places, content_kind, topic, rarity) before creation. Older clients
-    # that omit category get a 400 so they fail loudly instead of dropping
-    # a dirty row into the vocab.
-    if not category:
-        return send_error(h, 400, "category required (no uncategorized tags allowed)")
-    is_proposed = int(bool(body.get("is_proposed")))
-    is_exclusive = int(bool(body.get("is_exclusive")))
     conn = db_conn()
     try:
-        # v0.6 item 3: uniqueness is composite — (slug, category). Two rows can
-        # share a slug as long as their categories differ. IFNULL flattens the
-        # NULL/uncategorized slot so we don't permit two (slug, NULL) rows.
         existing = conn.execute(
-            "SELECT slug FROM tags "
-            "WHERE slug=? AND IFNULL(category,'')=IFNULL(?,'')",
-            (slug, category),
+            "SELECT slug FROM tags WHERE slug=?", (slug,)
         ).fetchone()
         if existing:
-            return send_error(
-                h, 409,
-                f"tag already exists in category {category!r}"
-                if category else "tag already exists in 'uncategorized'",
-            )
-        conn.execute(
-            "INSERT INTO tags(slug, display_name, description, category, is_proposed, is_exclusive, usage_count) "
-            "VALUES(?,?,?,?,?,?,0)",
-            (slug, display_name, description, category, is_proposed, is_exclusive),
-        )
+            return send_error(h, 409, f"tag {slug!r} already exists")
+        upsert_tag(conn, slug)
         conn.commit()
-        send_json(h, 200, {"ok": True, "slug": slug, "category": category})
+        send_json(h, 200, {
+            "ok": True,
+            "slug": slug,
+            "category": namespace_of(slug),  # for backward-compat with v0.6 UI
+        })
     finally:
         conn.close()
 
 
 def handle_tag_update(h: BaseHTTPRequestHandler) -> None:
+    """
+    Update a tag-cache row.
+
+    Phase 2.3 of the source-of-truth refactor: only the rename path
+    (slug -> new_slug) has a visible effect. The cache holds only
+    slug + usage_count + created_at, so body fields `display_name` /
+    `description` / `category` / `is_exclusive` / `group_name` are
+    accepted-and-ignored for backward compat with the v0.6 UI edit
+    modal. Namespace metadata lives in the §5.4 `vocabulary` registry.
+    """
     body = read_body(h)
     slug = body.get("slug")
     if not slug:
@@ -1379,21 +1363,18 @@ def handle_tag_update(h: BaseHTTPRequestHandler) -> None:
             return send_error(h, 400, "invalid new_slug")
     conn = db_conn()
     try:
-        row = conn.execute("SELECT * FROM tags WHERE slug=?", (slug,)).fetchone()
+        row = conn.execute(
+            "SELECT slug, usage_count FROM tags WHERE slug=?", (slug,)
+        ).fetchone()
         if not row:
             return send_error(h, 404, "tag not found")
         if new_slug and new_slug != slug:
-            # Rename: propagate to artifacts
-            # v0.6 item 3: collisions are per-category. Only block when a row
-            # with the same (new_slug, new_category) already exists. When it
-            # does, return a structured 409 so the UI can offer "merge into
-            # existing" rather than just failing.
-            new_category = body.get("category", row["category"])
-            new_is_exclusive = body.get("is_exclusive", row["is_exclusive"])
+            # Collision check is now single-slug PK; the v0.6 composite
+            # (slug, category) handshake collapses since category is no
+            # longer in the cache.
             existing = conn.execute(
-                "SELECT slug, category, usage_count, display_name "
-                "FROM tags WHERE slug=? AND IFNULL(category,'')=IFNULL(?,'')",
-                (new_slug, new_category),
+                "SELECT slug, usage_count FROM tags WHERE slug=?",
+                (new_slug,),
             ).fetchone()
             if existing:
                 return send_json(h, 409, {
@@ -1401,28 +1382,20 @@ def handle_tag_update(h: BaseHTTPRequestHandler) -> None:
                     "error": "merge_required",
                     "merge_offered": True,
                     "target_slug": existing["slug"],
-                    "target_category": existing["category"],
+                    # `target_category` is preserved as a key for the
+                    # v0.6 UI's merge offer; populated from the slug's
+                    # namespace prefix (§5.4 vocabulary registry shape).
+                    "target_category": namespace_of(existing["slug"]),
                     "target_usage": existing["usage_count"] or 0,
-                    "target_display_name": existing["display_name"],
+                    "target_display_name": display_name_for(existing["slug"]),
                 })
             # Crit 3 (§4.5): the rename's sweep over artifacts goes
             # through the single coordinated writer. We seed the new
-            # vocab row with usage_count=0 — write_artifact_tags
+            # cache row with usage_count=0; write_artifact_tags
             # increments it per artifact as the sweep replaces the old
             # slug with the new one, so the final cache value matches
             # reality without any manual carry-over.
-            conn.execute(
-                "INSERT INTO tags(slug, display_name, description, category, is_proposed, is_exclusive, usage_count, created_at) "
-                "VALUES(?,?,?,?,?,?,?, datetime('now'))",
-                (new_slug, body.get("display_name") or row["display_name"],
-                 body.get("description", row["description"]),
-                 new_category,
-                 row["is_proposed"], int(bool(new_is_exclusive)),
-                 0),
-            )
-            # Sweep: for each artifact carrying the old slug, build the
-            # new tag set and let write_artifact_tags handle the SQL
-            # write + usage_count diff.
+            upsert_tag(conn, new_slug)
             rows = conn.execute(
                 "SELECT id, tags FROM artifacts "
                 "WHERE EXISTS (SELECT 1 FROM json_each(artifacts.tags) WHERE value=?)",
@@ -1437,65 +1410,51 @@ def handle_tag_update(h: BaseHTTPRequestHandler) -> None:
                 try:
                     write_artifact_tags(conn, ar["id"], new_arr)
                 except TagValidationError as e:
-                    # An existing artifact carries a malformed tag — abort
-                    # the rename so the operator can address the data
-                    # before the sweep runs. The transaction is rolled
-                    # back by send_error's early return + conn close.
+                    # An existing artifact carries a malformed tag --
+                    # abort the rename so the operator can address the
+                    # data before the sweep runs.
                     conn.rollback()
                     return send_error(h, 400,
                         f"artifact {ar['id']} carries invalid tag: {e}")
             conn.execute("DELETE FROM tags WHERE slug=?", (slug,))
             slug = new_slug
-        else:
-            sets = []
-            args: list = []
-            for k in ("display_name", "description", "category", "is_exclusive"):
-                if k in body:
-                    sets.append(f"{k}=?")
-                    v = body[k]
-                    if k == "is_exclusive":
-                        v = int(bool(v))
-                    args.append(v)
-            # Accept legacy "group_name" as alias for category.
-            if "group_name" in body and "category" not in body:
-                sets.append("category=?")
-                args.append(body["group_name"])
-            if sets:
-                args.append(slug)
-                conn.execute(f"UPDATE tags SET {','.join(sets)} WHERE slug=?", args)
+        # No-op path: registry-era body fields are ignored (see docstring).
         conn.commit()
         send_json(h, 200, {"ok": True, "slug": slug})
     finally:
         conn.close()
 
 
-def handle_tag_accept(h: BaseHTTPRequestHandler) -> None:
-    body = read_body(h)
-    slug = body.get("slug")
-    if not slug:
-        return send_error(h, 400, "slug required")
-    conn = db_conn()
-    try:
-        conn.execute("UPDATE tags SET is_proposed=0 WHERE slug=?", (slug,))
-        conn.commit()
-        send_json(h, 200, {"ok": True, "slug": slug, "is_proposed": 0})
-    finally:
-        conn.close()
+# Removed Phase 2.3 (source-of-truth refactor §4.4.C): handle_tag_accept
+# is gone. The is_proposed workflow is retired (Decision Brief §9.3 Q2);
+# v0.6 already removed the UI ACCEPT button (mediavault.html v0.6 Item 8d
+# follow-up C4). The /api/tag-accept route registration and the dead
+# `tagAccept()` JS helper are removed in the same commit.
 
 
 def handle_tag_reject(h: BaseHTTPRequestHandler) -> None:
     """
-    Modes:
-      'remove'     — strip tag from every artifact, delete tag row.
-      'replace'    — swap to replacement_slug across artifacts, delete original.
-      'deprecate'  — leave artifacts; mark tag as deprecated (category='deprecated').
+    Reject a tag.
+
+      'remove'    -- strip tag from every artifact, delete cache row.
+      'replace'   -- swap to replacement_slug across artifacts, delete
+                     the original cache row.
+
+    Phase 2.3 of the source-of-truth refactor: the 'deprecate' mode is
+    retired. There is no `category='deprecated'` state to enter (the
+    `category` column is dropped by §5.2 in Phase 2.5); the legacy
+    deprecation semantics were "leave artifacts, hide tag from
+    autocomplete" -- that role is served by `retired_at` on the §5.4
+    `vocabulary` registry at the namespace level. The cache row's
+    sole role is usage counting.
     """
     body = read_body(h)
     slug = body.get("slug")
     mode = body.get("mode")
     repl = body.get("replacement_slug")
-    if not slug or mode not in ("remove", "replace", "deprecate"):
-        return send_error(h, 400, "slug and valid mode required")
+    if not slug or mode not in ("remove", "replace"):
+        return send_error(h, 400,
+            "slug and valid mode required (remove|replace)")
     if mode == "replace" and not repl:
         return send_error(h, 400, "replacement_slug required for replace mode")
     if repl:
@@ -1504,19 +1463,12 @@ def handle_tag_reject(h: BaseHTTPRequestHandler) -> None:
             return send_error(h, 400, "invalid replacement_slug")
     conn = db_conn()
     try:
-        if mode == "deprecate":
-            conn.execute("UPDATE tags SET category='deprecated' WHERE slug=?", (slug,))
-            conn.commit()
-            return send_json(h, 200, {"ok": True, "slug": slug, "mode": mode})
-
         # Crit 3 (§4.5): the remove/replace sweep over artifacts goes
         # through the single coordinated writer. write_artifact_tags
         # handles the per-artifact diff and the usage_count cache
-        # delta automatically — no manual carry-over needed (the
-        # old slug's count decrements to 0 as we strip it from each
-        # artifact, and the replacement's count increments per swap).
+        # delta automatically.
         if mode == "replace":
-            # ensure replacement exists in the vocab BEFORE the sweep,
+            # ensure replacement exists in the cache BEFORE the sweep,
             # so write_artifact_tags' usage_count UPDATE lands on a
             # real row.
             if not conn.execute("SELECT slug FROM tags WHERE slug=?", (repl,)).fetchone():
@@ -1739,7 +1691,6 @@ POST_ROUTES = {
     "/api/thumbgen":                 handle_thumbgen,
     "/api/tag-create":               handle_tag_create,
     "/api/tag-update":               handle_tag_update,
-    "/api/tag-accept":               handle_tag_accept,
     "/api/tag-reject":               handle_tag_reject,
     "/api/tag-delete":               handle_tag_delete,
     "/api/tag-merge":                handle_tag_merge,
