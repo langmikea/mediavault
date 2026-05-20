@@ -26,13 +26,14 @@ URL artifact can have children for images, text, and audio — but each child is
 addressable on its own.
 
 An artifact has:
-- A **lifecycle status** — `inbox` → `vault` → `released` (or `deleted`).
-  Archive is orthogonal: a nullable `archived_at` timestamp, not a status
-  value.
+- A **lifecycle status** — `inbox` → `vault` → `released` → `archived`. Four
+  states. `archived` is a soft-delete (recoverable). There is no hard
+  `deleted` state. See `SPEC.md` §4.1 for the full lifecycle.
 - A **storage mode** — `vaulted` (MV owns the bytes), `referenced` (MV points at
   your file), `url_only` (no local file).
-- **Dates** — `post_date`, `capture_date`, `ingest_date`, plus
-  `archived_at` when tucked away.
+- **Dates** — `post_date`, `capture_date`, `ingest_date`. (The `archived_at`
+  column is retired — present in the schema, never written, never read.
+  Archive is signalled by `status='archived'`. See `SPEC.md` §4.1.)
 - **Descriptions** — short, long, extracted text, media type. (Author is a pill,
   not a column — see below.)
 - **Tags** — slugged labels grouped into categories. Descriptive. Unlimited. Cheap.

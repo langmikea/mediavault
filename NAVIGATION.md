@@ -121,17 +121,21 @@ There are three systems, related as follows:
 
 ## Current state and what's next
 
-**Updated:** 2026-05-14
+**Updated:** 2026-05-19
 
 **Current state:** MV v0.5.2 is running and stable on
 127.0.0.1:51822. Active use continues. No code work currently in
 flight.
 
 **What's next:**
-- Phase-2 punchlist deferred indefinitely. Three drifts
-  (status=archived, is_proposed column, composite slug uniqueness)
-  are known and not scheduled. When Museum work needs them fixed,
-  revisit.
+- Phase-2 punchlist — partially reconciled. The status-enum
+  drift is resolved as of 2026-05-19: the Museum's §12 Criterion 5
+  corrected `SPEC.md` to match the running code (four-state
+  `inbox/vault/released/archived`; `archived_at` retired). This was a
+  spec correction only — no code changed; the code was already right.
+  Two drifts remain deferred and not scheduled: the `is_proposed`
+  column and composite slug uniqueness. Revisit when Museum work needs
+  them.
 - YT ingest producer script. The `/api/artifact-register` contract
   is stable on MV's side. The producer (the script that actually
   captures YouTube data and POSTs to that endpoint) hasn't been

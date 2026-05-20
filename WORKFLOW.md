@@ -7,8 +7,12 @@ design rationale see `MEDIAVAULT_V05_DESIGN.md`.
 > `_cowork/DECISIONS_2026-04-19_pill_states_and_friends.md`: pill review
 > is now three session-only states (`on` / `suggested` / `off`) with
 > auto-confirm on save; novel pills are applied immediately with no
-> proposed/accepted workflow; archive lives on `archived_at`, always
-> reversible. Implementation lands as the v0.7 punchlist.
+> proposed/accepted workflow.
+>
+> **Updated 2026-05-19** (post-Criterion 5): the `archived_at` claim
+> above was superseded — archive is `status='archived'`, not a
+> timestamp column. The `archived_at` column is retired (present in
+> the schema, never written, never read). See `SPEC.md` §4.1.
 
 ---
 
@@ -35,10 +39,10 @@ Every artifact lives in exactly one status:
 - `vault` — reviewed, tagged, kept
 - `released` — explicitly marked as a finished item (★ badge)
 
-Any vault or released row can also be **archived** — a separate flag
-(`archived_at` timestamp) that hides the row from default views until
-you toggle "Show archived" on the filter bar. Archive is reversible with
-one click.
+Any vault or released row can also be **archived** — `status` flips to
+`archived` and the row is hidden from default views until you toggle
+"Show archived" on the filter bar. Archive is reversible with one
+click (un-archive flips `status` back to `vault` or `released`).
 
 And carries one storage mode:
 
@@ -195,9 +199,11 @@ Click a card to open the detail panel.
 All fields are edit-in-place. Buttons:
 
 - **Release** / **Unrelease** — toggle between `vault` and `released`
-- **Archive** / **Unarchive** — set or clear `archived_at`. Archived rows
-  are hidden from default views; un-archiving brings them back. Status
-  (vault / released) doesn't change either way.
+- **Archive** / **Unarchive** — flip `status` to `archived` or back to
+  `vault` / `released`. Archived rows are hidden from default views;
+  un-archiving brings them back. `released_at` / `released_by` are
+  preserved across an archive cycle, so an archived row remembers
+  whether it had been released.
 - **Attach to parent** (new in v0.5) — opens a searchable modal of
   candidate parents. Self and descendants are excluded automatically.
 - **Detach** — appears only if the artifact has a parent set.
@@ -285,6 +291,6 @@ shows the parent and the parent's detail panel shows this as a child.
 Vocab Admin → filter UNUSED → ⌫ Bulk Delete → All → confirm.
 
 **"I want to tuck this old artifact away without scrapping it."**
-Vault detail → **Archive**. Sets `archived_at`. The row disappears from
-default views; toggle **Show archived** on the filter bar to find it
-again, then **Unarchive** to bring it back.
+Vault detail → **Archive**. Sets `status='archived'`. The row
+disappears from default views; toggle **Show archived** on the filter
+bar to find it again, then **Unarchive** to bring it back.

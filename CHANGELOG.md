@@ -1,5 +1,37 @@
 # MediaVault changelog
 
+## v0.5.2 — 2026-05-19
+
+docs(spec): correct SPEC.md lifecycle/archive sections to match running
+code — §12 Criterion 5 of the Museum data-architecture BUILD.
+
+SPEC.md described archive two ways that the code never implemented: a
+nullable `archived_at` timestamp orthogonal to `status`, plus a phantom
+`deleted` status value. The running system has neither — `/api/artifact-archive`
+sets `status='archived'`, the live CHECK constraint is
+`('inbox','vault','released','archived')`, and `archived_at` (added in
+v0.5.1 to satisfy a museum-side reader) is written and read by nothing.
+
+Ten edits to SPEC.md, doc-only, no code or schema change: §4.1 rewritten
+to `status='archived'` with a historical note retiring `archived_at`;
+the v0.5 reconciliation preamble, §6 status comment + schema annotation,
+§8.1/§8.2 vault filters, §10 Lifecycle + Archive rows, §12.2 migration
+note, and the §14 hard rule all corrected. `deleted` removed from the
+spec enum to match the live CHECK.
+
+Path A (spec follows code) was chosen over Path B (build the
+`archived_at` mechanism) per a read-only investigation: Path A is
+doc-only; Path B would reverse the 2026-05-14 Stance-B decision and
+modify a running v0.5.2 system. Backup: SPEC.md.pre-criterion5-20260519-151254.
+
+Out of scope, logged for follow-up: (1) `STATUS_ENUM` in
+`imgserver_extensions.py` still lists `archived` and `deleted` — a third
+enum copy in code; (2) `handle_artifact_delete` hard-deletes a DB row —
+worth checking against the §14 no-hard-delete rule; (3) PROJECT.md /
+STATE.md / WORKFLOW.md repeat the retired `archived_at` claim and need a
+doc pass; (4) MV NAVIGATION.md "What's next" is stale post-Criterion 5.
+
+
 Local-only repo. Versions track the SPEC.md decision baselines and the
 operator-facing changes between them. Each entry records: what changed,
 which files moved, why.

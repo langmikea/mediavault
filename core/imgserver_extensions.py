@@ -110,7 +110,17 @@ POST_DATE_CONF     = {"extracted", "manual", "estimated", "unknown"}
 INGEST_SOURCE      = {"screenshot-pipeline", "local-drop", "url-entry",
                       "csv-import", "extension-capture"}
 STORAGE_MODE       = {"vaulted", "referenced", "url_only"}
-STATUS_ENUM        = {"vault", "released", "archived", "deleted"}
+# STATUS_ENUM is intentionally a STRICT SUBSET of the live CHECK constraint
+# `CHECK(status IN ('inbox','vault','released','archived'))`. The register
+# endpoint exists to ship artifacts directly to the vault (or above) — the
+# Inbox is populated through other paths (the screenshot pipeline /
+# ingest_queue flow, and /api/artifact-requeue). `inbox` is therefore not
+# accepted at this endpoint by design (see COWORK_BRIEF_v05.md:533-534).
+# `deleted` was removed 2026-05-19 (post-Criterion-5): it appears nowhere
+# in the live CHECK and a client sending it would have produced an opaque
+# SQLite IntegrityError. Aligning STATUS_ENUM with the lifecycle as
+# documented in SPEC.md while preserving the register endpoint's design.
+STATUS_ENUM        = {"vault", "released", "archived"}
 
 # v0.5 slug grammar: lowercase, [a-z0-9_], optional single "namespace:" prefix.
 _SLUG_RE = re.compile(r"^(?:[a-z0-9_]+:)?[a-z0-9_]+$")

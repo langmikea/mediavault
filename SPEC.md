@@ -16,8 +16,7 @@
 > the middle state); `is_proposed` and the proposed/accepted tag
 > lifecycle are gone (one-stage vocabulary — saving an artifact implicitly
 > approves its tags); slug uniqueness is global (one slug, one tag — no
-> composite `(slug, category)` constraint); `archived_at` is the
-> canonical saved-but-hidden flag, always reversible. Implementation of
+> composite `(slug, category)` constraint). Implementation of
 > these corrections is the v0.7 punchlist; read the decisions doc before
 > editing any area this spec touches.
 
@@ -206,22 +205,31 @@ Transitions:
 - `inbox` → `released` — operator clicks **Save & Release** (one step: save to vault, then mark released).
 - `vault` ↔ `released` — toggle from the Vault detail panel.
 
-### 4.1 Archive (`archived_at`)
+### 4.1 Archive (`status='archived'`)
 
 Archive is **saved-but-hidden**. Always reversible.
 
-- Archiving sets `archived_at` to a timestamp (no other column changes).
-- Un-archiving sets `archived_at` back to NULL. One click, no gates
-  beyond "are you sure."
-- Default vault views filter out artifacts where `archived_at IS NOT NULL`.
-  A toggle in the vault filter bar reveals them.
+- Archiving sets `status` to `archived`. No timestamp column is updated;
+  `released_at` / `released_by` are preserved, so an archived row
+  remembers whether it had been released.
+- Un-archiving is not currently exposed in the UI. Restoring an archived
+  row requires manually flipping `status` back to `vault` or `released`
+  with a DB tool.
+- Default vault views filter out artifacts where `status='archived'`.
+  A "Show archived" toggle in the vault filter bar reveals them.
 - Archived artifacts keep their tags, metadata, and file bytes intact.
-  Nothing but the timestamp distinguishes them from any other vault row.
-- The archive/unarchive entry point lives in the vault detail panel.
+  Nothing but the status value distinguishes them from any other vault row.
+- The archive entry point lives in the vault detail panel.
 
-`archived_at` is the canonical signal. A single column serves both
-questions — *is this archived?* (NULL vs not) and *when was it tucked
-away?* (the timestamp value) — so no separate boolean is needed.
+Historical note: SPEC v0.5 originally specified `archived_at TEXT NULL`
+as the canonical archive signal — a nullable timestamp orthogonal to
+`status`. The column was added to the live schema in v0.5.1
+(`_cowork/v07_add_archived_at_column.py`) to satisfy a museum-side
+reader, but the archive handler was never migrated and no MV code reads
+or writes the column. The 2026-05-14 decision (`NAVIGATION.md`) was to
+leave the running code as-is and have the Museum adapter normalize the
+drift. This spec ratifies that decision: `archived_at` is **retired** —
+physically present in the schema, never written, never read (see §6).
 
 ---
 
@@ -257,7 +265,7 @@ One record per artifact. All fields stored in SQLite. The canonical schema snipp
 
     CREATE TABLE artifacts (
       id                       TEXT PRIMARY KEY,
-      status                   TEXT NOT NULL DEFAULT 'inbox',   -- inbox|vault|released|deleted
+      status                   TEXT NOT NULL DEFAULT 'inbox',   -- inbox|vault|released|archived
       storage_mode             TEXT NOT NULL DEFAULT 'vaulted', -- vaulted|referenced|url_only
 
       source_url               TEXT,
@@ -285,7 +293,7 @@ One record per artifact. All fields stored in SQLite. The canonical schema snipp
       confidence_flags         TEXT,                            -- JSON
       released_at              TEXT,
       released_by              TEXT,
-      archived_at              TEXT,
+      archived_at              TEXT,                            -- retired; present, never written/read (see §4.1)
       created_at               TEXT NOT NULL,
       updated_at               TEXT NOT NULL,
       FOREIGN KEY (parent_artifact_id) REFERENCES artifacts(id)
@@ -359,7 +367,7 @@ Served by `imgserver.py` at `http://localhost:51822/`. The main HTML is `mediava
 | Pane | Description |
 |---|---|
 | **Inbox** | Queue of items with `status='inbox'`. Left: viewer (image or URL preview). Right: field editor (Identity, Source, Dates, Storage, Tags, Structure) and an action bar — **Scrap / Save / Save & Release**. |
-| **MediaVault** (Vault) | Browsable vault. Filter bar, grid or table, and a detail panel. Default filter: `status IN (vault, released)` AND `archived_at IS NULL`, children hidden. A toggle reveals archived rows. |
+| **MediaVault** (Vault) | Browsable vault. Filter bar, grid or table, and a detail panel. Default filter: `status IN (vault, released)`, children hidden. A toggle reveals archived rows. |
 | **Vocab Admin** | Table of tags in vocabulary. Filter row: `ALL / UNUSED`. Per-pill controls: Rename / Reject (remove, replace, deprecate) / Edit / Delete / Merge. Top-bar tools: Merge, Bulk Delete. |
 
 ### 8.2 Vault Filter Bar
@@ -370,7 +378,7 @@ Served by `imgserver.py` at `http://localhost:51822/`. The main HTML is `mediava
 - Storage mode multi-select
 - Pill pills — **tri-state**: off / MUST / MUST NOT
 - Show children toggle
-- **Show archived** toggle (default off — the default view hides rows where `archived_at IS NOT NULL`)
+- **Show archived** toggle (default off — the default view hides rows where `status='archived'`)
 - Sort dropdown
 - Grid / table view toggle
 
@@ -452,8 +460,8 @@ The previous "Post Builder" concept — automatic usage logging per post — is 
 | Tag lifecycle | One stage. A tag exists in the vocabulary because an artifact was saved using it. No `is_proposed` column, no proposed/accepted distinction. Novel slugs typed in the picker are inserted immediately and applied to the artifact. | The inbox already decides what gets saved; the tags carried along for the ride are implicitly approved. A second curation stage at the tag level adds workflow cost without corresponding clarity. |
 | Slug uniqueness | Global. One slug, one tag. Category is descriptive metadata, not part of tag identity. | No concrete case was identified where two tags genuinely needed to share a slug. The forever-tax of qualifying "which `hunter_root`?" in every lookup isn't worth paying for flexibility with no known use. |
 | Storage mode | Explicit `storage_mode` column with three values. | `url_only`, `referenced`, and `vaulted` are all legitimate and need distinct UI affordances. |
-| Lifecycle | Explicit `status` column with values (`inbox`, `vault`, `released`, `deleted`). `released` is separate from `vault`. Archive is orthogonal — a nullable `archived_at` timestamp on the row. | Every other status scheme conflated "in vault" with "featured". Separating them makes the release act meaningful. Archive as a timestamp (not a status value) keeps the "when did I tuck this away?" signal free. |
-| Archive | `archived_at TEXT NULL` on `artifacts`. Default vault views filter out rows where it's set; a toggle reveals them. Un-archive sets it back to NULL. | "I want to keep this but not show it right now" is a real thought. Saved-but-hidden is the simplest model that captures the intent without overlapping with SCRAP. |
+| Lifecycle | Explicit `status` column with values (`inbox`, `vault`, `released`, `archived`). `released` is separate from `vault`. Archive is a status value. | Every other status scheme conflated "in vault" with "featured". Separating them makes the release act meaningful. The orthogonal-timestamp archive design in earlier spec drafts was never wired into the code; the status-value model is what runs. |
+| Archive | `status='archived'` on `artifacts`. Default vault views filter it out; a "Show archived" toggle reveals it. Un-archive is not currently exposed in the UI — manual DB edit required. | "I want to keep this but not show it right now" is a real thought. Saved-but-hidden via a status value was the implementation that shipped; it does not overlap with SCRAP. |
 | IDs | `MV-YYYYMMDD-NNN`, per-day counter in `id_sequence(date_str PK, last_seq)`. | No more prefix baked into the ID — domain is a pill. |
 | Attention rules | Hardcoded R1-R5 in `core/attention_rules.py`. Soft warnings only. | The set is small, stable, and revisions want code review. No admin UI. YAGNI. |
 | FB candidates | Separate table and UI; the bridge button creates an inbox queue item. | Keeps the hunter-root-specific review queue simple; MediaVault stays general. |
@@ -510,7 +518,8 @@ Performed in two transactions.
 1. `PRAGMA journal_mode = MEMORY` (sandbox-safe).
 2. Create `artifacts_new` with the v0.5 column set: drop `author_name`,
    `tags_permission`, `permission_contact`, `permission_evidence_path`;
-   add `archived_at`.
+   add `archived_at`. (Historical record. `archived_at` was later
+   retired — see §4.1 — though the column physically remains.)
 3. `INSERT … SELECT` all rows; synthesize `author:<slug>` pills from
    existing `author_name` values into the artifact's `tags` array and into
    `tag_vocabulary`.
@@ -582,7 +591,7 @@ Adding a rule is a code edit + code review. No schema change, no admin UI.
 - Author is a pill (`author:<slug>`), not a column.
 - One-stage tag vocabulary: saving an artifact implicitly approves its tags. No `is_proposed` column, no curation backlog.
 - Pill review states (`on` / `suggested` / `off`) are session-only — not persisted on the artifact.
-- `status` and `storage_mode` are explicit on every record. Archive is `archived_at IS NOT NULL`, independent of status.
+- `status` and `storage_mode` are explicit on every record. Archive is `status='archived'`.
 - Attention rules are code (`core/attention_rules.py`); changing them is a code edit.
 - `ingest_engine.py` owns intake; `imgserver.py` owns serving. Nothing else writes to the DB.
 - `ext/hr_manager_renderer.js` is external — never modified from MediaVault.

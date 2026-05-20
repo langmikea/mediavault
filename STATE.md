@@ -87,6 +87,11 @@ Following REVIEW_v06.md and four intent-ambiguity resolutions:
 - **`is_proposed`.** Removed. One-stage vocabulary.
 - **`archived_at`.** Saved-but-hidden. Always reversible. Real column on
   artifacts.
+  *(SUPERSEDED 2026-05-19 — Criterion 5: the column was added but
+  never wired up; the running archive handler always set
+  `status='archived'`. The doc is now corrected to match the code.
+  `archived_at` is retired — present in the schema, never written,
+  never read. See `SPEC.md` §4.1.)*
 
 Full reasoning: `_cowork/DECISIONS_2026-04-19_pill_states_and_friends.md`
 SPEC reconciled same day.
