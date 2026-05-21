@@ -158,14 +158,37 @@ _TRIPLE_DQ = chr(34) * 3
 _TRIPLE_SQ = chr(39) * 3
 
 
+class UnparseableFile(Exception):
+    """Raised when a .py file cannot be tokenized.
+
+    Hardened 2026-05-21 (post-Phase-2.5): the previous silent
+    whole-file fallback hid the Phase 2.5 FUSE truncation that left
+    imgserver.py and ingest_engine.py syntactically broken while the
+    check still reported '0 violations'. Strict-by-default now: any
+    tokenize/indent/syntax error in a scanned .py file is surfaced
+    as an UnparseableFile and counted distinctly from violations.
+    Exit code 2 (not 1) so callers can distinguish 'invariant broken'
+    from 'file was broken before invariant could be checked'.
+
+    Note on exception classes: tokenize.TokenError (no "ize" suffix)
+    is the correct class name in stdlib. The original code at this
+    location referenced tokenize.TokenizeError, which does not
+    exist in this Python -- meaning the original silent-fallback was
+    actually dead code, and tokenize failures were being swallowed
+    by scan_file's generic Exception handler one level up. This fix
+    addresses both the original swallow and the dead-fallback class.
+    """
+
+
 def _iter_python_strings(text: str) -> Iterable:
     """Yield (line_no, literal_body) for every STRING token in *text*.
-    Falls back to a single whole-file window if tokenize chokes."""
+
+    Raises UnparseableFile if tokenization fails. Callers must catch
+    and record the failure rather than silently falling back."""
     try:
         tokens = list(tokenize.tokenize(io.BytesIO(text.encode("utf-8")).readline))
-    except (tokenize.TokenizeError, IndentationError, SyntaxError):
-        yield (1, text)
-        return
+    except (tokenize.TokenError, IndentationError, SyntaxError) as e:
+        raise UnparseableFile(str(e)) from e
     for tok in tokens:
         if tok.type == tokenize.STRING:
             raw = tok.string
@@ -217,10 +240,18 @@ def scan_text_file(path: Path):
 
 
 def scan_file(path: Path):
+    """Scan one file. Returns list of violation tuples.
+
+    UnparseableFile is re-raised so main() can record it distinctly.
+    Other exceptions (e.g. I/O errors) are still suppressed as
+    warnings -- those don't impeach the invariant the way a broken
+    .py file does."""
     try:
         if path.suffix.lower() == ".py":
             return scan_python_file(path)
         return scan_text_file(path)
+    except UnparseableFile:
+        raise
     except Exception as e:
         print(f"warning: could not scan {path}: {e}", file=sys.stderr)
         return []
@@ -264,9 +295,13 @@ def main(argv=None) -> int:
     files.sort()
 
     violations = []
+    unparseable = []
     for f in files:
-        for name, line_no, snippet in scan_file(f):
-            violations.append((f, name, line_no, snippet))
+        try:
+            for name, line_no, snippet in scan_file(f):
+                violations.append((f, name, line_no, snippet))
+        except UnparseableFile as e:
+            unparseable.append((f, str(e)))
 
     if not args.quiet:
         print("§4.5.1(b) single-writer check")
@@ -274,6 +309,22 @@ def main(argv=None) -> int:
         print(f"  permitted writer:    {PERMITTED_RELATIVE}")
         print(f"  files scanned:       {len(files)}")
         print(f"  violations found:    {len(violations)}")
+        print(f"  unparseable .py:     {len(unparseable)}")
+        print()
+
+    if unparseable:
+        print("UNPARSEABLE -- .py files that could not be tokenized:")
+        print()
+        for path, err in unparseable:
+            try:
+                rel = path.relative_to(root)
+            except ValueError:
+                rel = path
+            print(f"  {rel}")
+            print(f"    {err}")
+        print()
+        print("These files cannot be reliably checked for §4.5 violations.")
+        print("Fix the syntax error and re-run before treating the check as passing.")
         print()
 
     if violations:
@@ -291,8 +342,13 @@ def main(argv=None) -> int:
         print("  write_artifact_tags(conn, artifact_id, new_tags)")
         return 1
 
+    if unparseable:
+        # Distinct exit code: invariant not impeached, but check could
+        # not run against every file. Operator must fix and re-run.
+        return 2
+
     if not args.quiet:
-        print("OK — single coordinated writer for artifacts.tags holds.")
+        print("OK -- single coordinated writer for artifacts.tags holds.")
     return 0
 
 
