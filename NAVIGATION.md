@@ -146,11 +146,23 @@ flight.
   KEY. See CHANGELOG v0.5.3 and SPEC.md §6.5. With this, MV's
   Phase-2 punchlist is closed and §12 of the museum's data-architecture
   refactor reads 8 of 8 complete.
-- YT ingest producer script. The `/api/artifact-register` contract
-  is stable on MV's side. The producer (the script that actually
-  captures YouTube data and POSTs to that endpoint) hasn't been
-  written yet. Currently design-only in
-  `_cowork/YT_INGEST_FROM_MUSEUM.md`.
+- YT ingest producer script — **DONE (originally 2026-05-10; re-verified
+  post-Phase-2.5 on 2026-05-21).** The producer exists in two pieces:
+  the museum-side wrapper at `weird-baby-museum/tools/yt-ingest.mjs`
+  (SPINE-validation + spawn) and the Python capture script at
+  `Hunter Root/tools/yt_archive_capture.py` (HTTP fetch + transcript +
+  thumbnail + manifest + POSTs to `/api/artifact-register`). Originally
+  written 2026-05-10; first end-to-end Criterion-2 verification 2026-05-18
+  (see Museum NAVIGATION §149+, run record `MV-20260518-001/002/003`).
+  Re-verified 2026-05-21 via dry-run against the post-Phase-2.5
+  schema (slug PRIMARY KEY, demoted tags cache): SPINE validation, YouTube
+  fetches, manifest construction, and namespaced tag payloads all clean.
+  Real-run ingest log at `weird-baby-museum/docs/ingest-log.md` (4 live
+  runs + 1 dry-run as of 2026-05-21).
+
+  This bullet was previously 'hasn't been written yet' — an artifact of MV
+  NAVIGATION not getting updated when the 2026-05-10 / 05-18 work landed.
+  Corrected here.
 
 **If nothing's queued:** No items above means there's no work
 pre-decided. Don't pick something autonomously — ask Mike what to
