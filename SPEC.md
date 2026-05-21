@@ -279,7 +279,7 @@ One record per artifact. All fields stored in SQLite. The canonical schema snipp
       description_short        TEXT,
       description_long         TEXT,
       extracted_text           TEXT,
-      media_type               TEXT,                            -- photo|video|audio|link|text|mixed|other
+      media_type               TEXT,                            -- link|mixed|photo|text|video|unknown  (target set per v2.1-target §6.1; live drift documented in §6.6 below)
 
       local_asset_path         TEXT,
       thumbnail_path           TEXT,
@@ -368,6 +368,34 @@ See `CHANGELOG.md` v0.5.3 and
 `docs/PHASE25_RUN_REPORT-20260520-*.md` for the migration record.
 
 ---
+
+### 6.6 — `media_type` target set vs live data (Phase 3, 2026-05-20)
+
+The `media_type` column comment in §6's `CREATE TABLE artifacts` block lists the
+v2.1-target set: `link, mixed, photo, text, video, unknown`. This documents the
+*target*, not the *current live state*.
+
+**Current live drift, as of 2026-05-20:** the live `artifacts` table
+contains rows with `media_type='text-only'` (22) and `media_type IS NULL` (7)
+in addition to values in the target set. The MV validator at
+`core/imgserver_extensions.py:107` (`MEDIA_TYPE = {"photo", "video", "audio",
+"link", "text", "mixed", "other"}`) is a third, partially-overlapping set
+that accepts `audio` and `other` (zero live rows) and rejects `text-only`
+and `unknown`. None of these are aligned today.
+
+**This phase (Phase 3 of the source-of-truth refactor) deliberately scopes only
+the doc comment.** Aligning the validator, normalizing the live `text-only`
+and NULL rows, and adding a CHECK constraint on `media_type` are *not* done
+here. Those are named in `docs/SOURCE_OF_TRUTH_REFACTOR_SCOPING_BRIEF-
+20260519-220000.md` §4.5 as "out of scope for this brief — that work is its
+own §12 item, named separately." The brief is correct: that work needs its
+own operator decision (notably: what does `text-only` mean — should it
+normalize to `text`?), pre-write backup, normalization script, and CHECK
+addition. Each piece deserves its own scoping and run report.
+
+The truly-minimal Shape A taken here matches Criterion 5's discipline: align
+SPEC.md with the *target* set, surface the drift honestly in prose, and leave
+the runtime untouched until the matching schema and data work is green-lit.
 
 ## 7. Thumbnail Specification
 
