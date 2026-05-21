@@ -300,13 +300,10 @@ One record per artifact. All fields stored in SQLite. The canonical schema snipp
     );
 
     CREATE TABLE tags (
-      slug          TEXT PRIMARY KEY,        -- global uniqueness; category is NOT part of the key
-      display_name  TEXT NOT NULL,
-      description   TEXT,
-      category      TEXT,                    -- bands|era|people|places|content_kind|topic|platform|rarity|NULL
-      is_exclusive  INTEGER NOT NULL DEFAULT 0,
+      slug          TEXT    PRIMARY KEY,    -- one slug, one row; namespace lives in the slug itself
+      display_name  TEXT,
       usage_count   INTEGER NOT NULL DEFAULT 0,
-      created_at    TEXT NOT NULL
+      created_at    TEXT
     );
 
     CREATE TABLE id_sequence (
@@ -342,6 +339,33 @@ A JSON array of slugs. Always present (default `'[]'`). Duplicate slugs are norm
 ### 6.4 Confidence Flags
 
 JSON array of field names Claude flagged as uncertain during enrichment. The Inbox editor highlights these fields; when the operator touches and saves, the flag clears.
+
+### 6.5 Retired `tags` Columns
+
+Historical note: SPEC v0.5 defined four additional columns on the
+`tags` table — `description`, `category`, `is_exclusive`, and
+`is_proposed`. They were retired by **Phase 2.5** of the source-of-truth
+refactor on **2026-05-20**
+(`_cowork/v13_phase25_demote_tags_table.py`) and physically dropped
+from the live schema. In the same migration `slug` was promoted from
+`TEXT NOT NULL` to `TEXT PRIMARY KEY`, replacing the v0.5-era composite
+`(slug, category)` uniqueness with the global "one slug, one row"
+guarantee the v0.5 reconciliation banner already declared (see top of
+this file).
+
+Namespace metadata (the legacy role of `category`) now lives in slugs
+themselves — `bands:hunter_root` rather than a `bands` row in a
+separate column — per §5.4 of the museum repo's
+`DATA_ARCHITECTURE_SPEC_v2.1-target.md` and the §5.4 `vocabulary`
+registry that holds the namespace prose. Per-tag exclusivity
+(`is_exclusive`) and the proposed/accepted curation workflow
+(`is_proposed`) are not part of the post-refactor model. Free-form
+per-tag description (`description`) similarly has no home in the
+demoted cache; descriptive prose for a namespace lives in
+`vocabulary`, not on individual tag rows.
+
+See `CHANGELOG.md` v0.5.3 and
+`docs/PHASE25_RUN_REPORT-20260520-*.md` for the migration record.
 
 ---
 

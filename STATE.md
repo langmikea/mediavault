@@ -11,6 +11,11 @@ Headline changes (v0.4 → v0.5):
 - **Vocab:** `tags.group_name` (cosmetic label) → `tags.category` (one of
   `bands`, `people`, `places`, `content_kind`, `topic`, `scope`, `rarity`,
   or `null`). Added `tags.is_exclusive` (0/1) for per-category exclusivity.
+  *(SUPERSEDED 2026-05-20 — Phase 2.5 of the source-of-truth refactor
+  dropped `category`, `is_exclusive`, `is_proposed`, and `description`
+  from the live `tags` schema. Namespace metadata now lives in slugs
+  (`bands:hunter_root`) and in the §5.4 `vocabulary` registry; see
+  SPEC.md §6.5 and CHANGELOG v0.5.3.)*
 - **Five-state inbox pill model.** Per-artifact pill state during review:
   `on_confident`, `on_uncertain`, `off_suspected`, `off_maybe`. Only `on_*`
   states count toward "this pill is on" when saving and when running
@@ -85,6 +90,11 @@ Following REVIEW_v06.md and four intent-ambiguity resolutions:
 - **Slug uniqueness.** Global. One slug, one tag. Category is descriptive
   metadata.
 - **`is_proposed`.** Removed. One-stage vocabulary.
+  *(REALIZED 2026-05-20 — Phase 2.5 of the source-of-truth refactor
+  physically dropped the `is_proposed` column from the live `tags`
+  schema. The 2026-04-19 decision was a doc-only declaration; the
+  column lingered in code until Phase 2.5. See SPEC.md §6.5 and
+  CHANGELOG v0.5.3.)*
 - **`archived_at`.** Saved-but-hidden. Always reversible. Real column on
   artifacts.
   *(SUPERSEDED 2026-05-19 — Criterion 5: the column was added but

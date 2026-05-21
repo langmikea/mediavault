@@ -227,8 +227,12 @@ def vocab_row_for_slug(slug: str, usage_count: int,
 
     Returns the same shape the v0.5 `/api/tags` endpoint produced — so
     existing UI / prompt callers continue to work — but with namespace
-    metadata sourced from the §5.4 `vocabulary` table instead of the
-    demoted `tags`-table registry-era columns.
+    metadata sourced from the §5.4 `vocabulary` registry instead of the
+    `tags` table itself. The legacy `tags.description`, `tags.category`,
+    `tags.is_exclusive`, and `tags.is_proposed` columns are **no longer
+    in the schema** — Phase 2.5 of the source-of-truth refactor dropped
+    them on 2026-05-20 (see CHANGELOG v0.5.3 / SPEC.md §6.5). The fields
+    below are synthesized here so v0.5 UI/prompt callers keep working.
 
     Fields produced: `slug`, `display_name`, `category`, `is_exclusive`,
     `is_proposed`, `usage_count`, `description`. `category` carries the
@@ -236,7 +240,7 @@ def vocab_row_for_slug(slug: str, usage_count: int,
     legacy `tags.category` column). Bare slugs (no namespace prefix)
     carry `category=None`. `is_proposed` is always 0 (workflow retired
     per Decision Brief §9.3 Q2). `is_exclusive` is always 0 (the legacy
-    per-tag exclusivity flag does not exist in the new registry).
+    per-tag exclusivity flag has no home in the new model).
     `description` is always None (no longer tracked per-tag).
     """
     ns = namespace_of(slug)
@@ -284,19 +288,25 @@ def upsert_tag(conn: sqlite3.Connection, slug: str,
                is_exclusive: int = 0) -> None:
     """Insert a tag-cache row if missing.
 
-    Phase 2.2 of the source-of-truth refactor: the `tags` table is the
-    per-value usage-count cache (post-§5.2 demotion). Only the columns
-    that survive the demotion are written here — `slug`, `usage_count`
-    (defaulted to 0), `created_at` (now). Namespace metadata
-    (display_name, category/namespace, exclusivity) lives in the §5.4
-    `vocabulary` registry and never travels with the cache row.
+    The `tags` table is the per-value usage-count cache (post-§5.2
+    demotion in Phase 2.2 of the source-of-truth refactor, schema
+    finalized by Phase 2.5 on 2026-05-20). Live columns: `slug` (PRIMARY
+    KEY), `display_name`, `usage_count`, `created_at`. This function
+    writes `slug`, `usage_count` (defaulted to 0), `created_at` (now);
+    `display_name` is currently left NULL, matching the post-2.5 cache
+    convention (the human label is supplied per-namespace by the §5.4
+    `vocabulary` registry, not per-tag).
 
     The `display_name` / `category` / `is_proposed` / `is_exclusive`
     parameters are retained in the signature for backward compatibility
-    with v0.5 callers (every existing call site passes them by keyword)
-    and are accepted-and-ignored.
+    with v0.5 callers (every existing call site passes them by keyword).
+    The latter three name columns that **no longer exist** in the live
+    schema — Phase 2.5 dropped them — so they are accepted-and-discarded
+    here. See CHANGELOG v0.5.3 / SPEC.md §6.5.
     """
-    # Accept-and-ignore the v0.5 metadata parameters (see docstring).
+    # Accept-and-discard the v0.5 metadata parameters (see docstring).
+    # `category`, `is_proposed`, `is_exclusive` reference columns that
+    # were dropped from the `tags` table by Phase 2.5.
     del display_name, category, is_proposed, is_exclusive
     row = conn.execute("SELECT slug FROM tags WHERE slug=?", (slug,)).fetchone()
     if row is None:
@@ -1304,19 +1314,22 @@ def handle_tag_create(h: BaseHTTPRequestHandler) -> None:
 
     Phase 2.3 of the source-of-truth refactor: namespace metadata lives
     in the §5.4 `vocabulary` registry -- never in the `tags` cache. The
-    handler now writes only the columns that survive the §5.2 schema
+    handler writes only the columns that survive the §5.2 schema
     demotion (slug, usage_count, created_at).
 
       Required: slug. The slug self-describes its namespace via the
         `namespace:value` prefix (e.g. `album:arkansas`); slugify()
         enforces the grammar.
       Optional: display_name, description, category, group_name (alias),
-        is_proposed, is_exclusive. All accepted-and-ignored for backward
-        compatibility with the v0.6 UI's edit modal -- the cache row no
-        longer carries any of those fields.
+        is_proposed, is_exclusive. All accepted-and-discarded for
+        backward compatibility with the v0.6 UI's edit modal. The
+        latter four (`description`, `category`, `is_proposed`,
+        `is_exclusive`) name columns that **no longer exist** in the
+        live schema -- Phase 2.5 dropped them on 2026-05-20 (CHANGELOG
+        v0.5.3 / SPEC.md §6.5).
 
-    Per-slug uniqueness is just the `slug` PRIMARY KEY now; the v0.6
-    composite (slug, category) uniqueness retires alongside the
+    Per-slug uniqueness is enforced by the `slug` PRIMARY KEY -- the
+    v0.6-era composite `(slug, category)` uniqueness retired with the
     `category` column in Phase 2.5.
     """
     body = read_body(h)

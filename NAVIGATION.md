@@ -81,13 +81,18 @@ There are three systems, related as follows:
 
 ## Known state (as of 2026-05-14)
 
-- **MV is in v0.5.2.** Three small drifts exist between MV's spec
+- **MV is in v0.5.2.** Three small drifts existed between MV's spec
   document and MV's running code: `artifacts.status` allows the value
-  `archived` (the spec says it should be `deleted`); the column
-  `tags.is_proposed` is physically present though logically retired;
-  tag slug uniqueness is enforced as composite `(slug, category)` not
-  global. These drifts are tracked in MV's CHANGELOG as a "Phase-2
-  cleanup punchlist," deferred indefinitely.
+  `archived` (the spec said it should be `deleted`); the column
+  `tags.is_proposed` was physically present though logically retired;
+  tag slug uniqueness was enforced as composite `(slug, category)` not
+  global. All three are now **RESOLVED**: the status-enum drift by
+  Museum §12 Criterion 5 on 2026-05-19 (spec corrected to match the
+  live code); `is_proposed` and composite slug uniqueness by **Phase 2.5
+  of the source-of-truth refactor on 2026-05-20**, which dropped
+  `is_proposed`, `category`, `is_exclusive`, and `description` from the
+  live `tags` schema and promoted `slug` to PRIMARY KEY. See CHANGELOG
+  v0.5.3 and SPEC.md §6.5.
 
 - **The Museum integrates against MV-as-it-actually-is, not against
   MV's spec.** Two stances were considered:
@@ -95,7 +100,10 @@ There are three systems, related as follows:
     reads from MV until the three drifts above (status=archived,
     is_proposed column, composite slug uniqueness) are fixed in MV.
     Museum code ends up cleaner; Museum work is blocked until MV
-    cleanup lands.
+    cleanup lands. *(NOTE 2026-05-20: all three drifts are now
+    RESOLVED — see above. Stance A's blocker is gone; the choice of
+    Stance B for the 2026-05-14 decision is preserved as the historical
+    record.)*
   - Stance B — adapter layer. When Museum-to-MV integration work
     starts, it proceeds against MV v0.5.2 as-is, with a thin
     adapter layer in the Museum that normalizes the three drifts.
@@ -128,14 +136,16 @@ There are three systems, related as follows:
 flight.
 
 **What's next:**
-- Phase-2 punchlist — partially reconciled. The status-enum
-  drift is resolved as of 2026-05-19: the Museum's §12 Criterion 5
-  corrected `SPEC.md` to match the running code (four-state
-  `inbox/vault/released/archived`; `archived_at` retired). This was a
-  spec correction only — no code changed; the code was already right.
-  Two drifts remain deferred and not scheduled: the `is_proposed`
-  column and composite slug uniqueness. Revisit when Museum work needs
-  them.
+- Phase-2 punchlist — **RESOLVED.** The status-enum drift was
+  resolved 2026-05-19 by Museum §12 Criterion 5 (spec corrected to
+  match the four-state running code; `archived_at` retired in place).
+  The remaining two drifts — the `is_proposed` column and composite
+  slug uniqueness — were resolved 2026-05-20 by **Phase 2.5 of the
+  source-of-truth refactor**, which dropped the four registry-era
+  columns from the live `tags` schema and promoted `slug` to PRIMARY
+  KEY. See CHANGELOG v0.5.3 and SPEC.md §6.5. With this, MV's
+  Phase-2 punchlist is closed and §12 of the museum's data-architecture
+  refactor reads 8 of 8 complete.
 - YT ingest producer script. The `/api/artifact-register` contract
   is stable on MV's side. The producer (the script that actually
   captures YouTube data and POSTs to that endpoint) hasn't been

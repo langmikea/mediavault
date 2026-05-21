@@ -1,5 +1,100 @@
 # MediaVault changelog
 
+## v0.5.3 — 2026-05-20
+
+schema(phase-2.5): drop four registry-era columns from `tags`, promote
+`slug` to PRIMARY KEY — closes §12 Criterion 8 of the museum's
+data-architecture refactor.
+
+The `tags` table is the per-value usage-count cache (post-§5.2 demotion
+in the source-of-truth refactor). Phase 2.5 retires the four columns
+the demoted cache no longer carries:
+
+  - `description` — never tracked per-tag in the new model; descriptive
+    prose for a namespace lives in the §5.4 `vocabulary` registry.
+  - `category` — namespace metadata now travels in the slug itself
+    (`bands:hunter_root` rather than a `bands` row + value column).
+  - `is_exclusive` — per-tag exclusivity is not part of the post-
+    refactor model.
+  - `is_proposed` — the proposed/accepted curation workflow was retired
+    on 2026-04-19 (one-stage vocabulary, per `_cowork/DECISIONS_2026-04-19
+    _pill_states_and_friends.md`); the column lingered in the live
+    schema until this commit.
+
+In the same migration `slug` was promoted from `TEXT NOT NULL` to
+`TEXT PRIMARY KEY`, replacing the v0.5-era composite-`(slug, category)`
+uniqueness with the global "one slug, one row" guarantee the v0.5
+reconciliation banner already declared (see top of SPEC.md). The four
+obsolete indexes — `idx_tags_slug_category`,
+`idx_tags_slug_when_null_cat`, `idx_tags_category`, `idx_tags_proposed`
+— were dropped at the same time; slug lookups now use the implicit
+`sqlite_autoindex_tags_1` (PK index), confirmed via `EXPLAIN QUERY
+PLAN`.
+
+Pre-state: 69 rows, `SUM(usage_count)=453`, 8 columns, 4 obsolete
+indexes (per `docs/PHASE2_4_RUN_REPORT-20260520-171029.md` §4).
+Post-state: 69 rows, `SUM(usage_count)=453`, 4 columns (`slug
+PRIMARY KEY, display_name, usage_count, created_at`), implicit PK
+index only. Row counts and the per-slug `usage_count` parity with
+`artifacts.tags` are unchanged. §4.5.1(b) single-writer check
+(`tools/check_single_tag_writer.py`) passes post-migration (30 files
+scanned, 0 violations).
+
+Patch landed by `_cowork/v13_phase25_demote_tags_table.py`. Single
+SQLite transaction, five steps: (1) drop the four obsolete indexes,
+(2) `ALTER TABLE tags DROP COLUMN` x4, (3) `CREATE-INSERT-DROP-RENAME`
+to add the `slug PRIMARY KEY` constraint (SQLite cannot add a PK
+constraint via `ALTER TABLE`), (4) verify post-state (row counts,
+`SUM(usage_count)`, `EXPLAIN QUERY PLAN` slug-lookup index use),
+(5) `COMMIT`. Requires SQLite >= 3.35 for `DROP COLUMN`; verified
+3.37.2 at run time.
+
+Backup discipline: pre-write backup at
+`core/backups/mediavault.pre-phase25-20260520-234155.sqlite` (SHA-256
+`0a6456ebf460368d404f4c17d6dfe57ee704a2e66c96cac5bd1f5f6dbb9ccb33`,
+byte-identical to the pre-migration DB). A second snapshot was taken
+immediately before the live-DB swap
+(`core/backups/mediavault.pre-phase25-swap-20260520-234607.sqlite`,
+same SHA — confirmed pristine between Phase 2.4's commit and the
+Phase 2.5 swap). Both files are untracked working-tree noise (the
+`core/backups/` gitignore follow-up from Phase 2.4 §5 is still open).
+
+Migration ran against `/tmp/mediavault.phase25.sqlite` (a copy on the
+VM's native ext4) per the Cowork-on-Windows FUSE-mount workaround
+documented in `docs/PHASE2_4_RUN_REPORT-20260520-171029.md` §2.4. Live
+`core/mediavault.sqlite` was overwritten via `cp` and SHA-256
+byte-verified against the `/tmp` source post-swap.
+
+Doc updates in this commit: SPEC.md §6 schema block (4-column shape)
++ new §6.5 retirement subsection; STATE.md headline-changes and
+DECISIONS sections marked SUPERSEDED / REALIZED; NAVIGATION.md
+"Known state" and "What's next" sections marked RESOLVED; this
+CHANGELOG entry. Code-comment updates in `core/imgserver.py`
+(`vocab_row_for_slug` ~line 234, `upsert_tag` ~line 280,
+`handle_tag_create` ~line 1314) and `core/ingest_engine.py`
+(`upsert_tag` ~line 106) rewording the v0.5 "accepted-and-ignored"
+notes to reflect that the doomed columns are no longer in the schema
+at all. `core/attention_rules.py:22` was left alone (already correct).
+
+Run report: `docs/PHASE25_RUN_REPORT-20260520-234155.md` mirrors the
+format of `docs/PHASE2_4_RUN_REPORT-20260520-171029.md`.
+
+Out of scope, logged for follow-up: (1) SPEC.md §2 pill conceptual
+model still describes `category` and `is_exclusive` as pill properties
+— now a UI grouping concept delivered through namespaced slugs rather
+than dedicated schema columns; a §2 prose pass is non-blocking and
+worth a separate doc-only commit. (2) `core/backups/` is still not in
+`.gitignore` (carried over from Phase 2.4 §5). (3) Phase 3
+(`media_type` enum cleanup) remains separately scoped and is not on
+the Criterion-8 critical path. (4) The Museum repo's working tree has
+a cosmetic staged-delete vs. untracked pair on
+`docs/PHASE2A_RUN_REPORT-20260520-162150.md` (file SHA matches HEAD);
+not touched by Phase 2.5 since the Museum repo isn't modified by this
+phase. (5) The doc-sweep portion of this commit was rebuilt in /tmp
++ cp after the Edit-tool path hit the documented Cowork-on-Windows
+FUSE-mount truncation pattern (Phase 0 / Phase 1 / Phase 2A symptom);
+this is the same pattern Phase 2.4 §2.4 recommends defaulting to.
+
 ## v0.5.2 — 2026-05-19
 
 docs(spec): correct SPEC.md lifecycle/archive sections to match running

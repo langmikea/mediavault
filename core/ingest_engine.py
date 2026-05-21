@@ -107,21 +107,28 @@ def upsert_tag(conn, slug, display_name=None, category=None, is_proposed=0,
                is_exclusive=0):
     """Insert a tag-cache row if missing. Returns the slug on success.
 
-    Phase 2.2 of the source-of-truth refactor: the `tags` table is a
-    per-value usage-count cache (post-§5.2 demotion). Only the columns
-    that survive the demotion are written here — `slug`, `usage_count`
-    (defaulted to 0), `created_at` (now). Namespace metadata lives in
-    the §5.4 `vocabulary` registry and never travels with the cache
-    row.
+    The `tags` table is the per-value usage-count cache (post-§5.2
+    demotion in Phase 2.2 of the source-of-truth refactor, schema
+    finalized by Phase 2.5 on 2026-05-20). Live columns: `slug` (PRIMARY
+    KEY), `display_name`, `usage_count`, `created_at`. This function
+    writes `slug`, `usage_count` (defaulted to 0), `created_at` (now);
+    `display_name` is left NULL on the cache row — the human label is
+    supplied per-namespace by the §5.4 `vocabulary` registry, not
+    per-tag. The `ON CONFLICT(slug)` clause leans on the slug PRIMARY
+    KEY added in Phase 2.5.
 
     The `display_name` / `category` / `is_proposed` / `is_exclusive`
     parameters are retained in the signature for backward compatibility
-    with v0.5 callers; they are accepted-and-ignored.
+    with v0.5 callers. The latter three name columns that **no longer
+    exist** in the live schema — Phase 2.5 dropped them — so they are
+    accepted-and-discarded here. See CHANGELOG v0.5.3 / SPEC.md §6.5.
     """
     slug = slugify(slug)
     if not slug:
         return None
-    # Accept-and-ignore the v0.5 metadata parameters (see docstring).
+    # Accept-and-discard the v0.5 metadata parameters (see docstring).
+    # `category`, `is_proposed`, `is_exclusive` reference columns that
+    # were dropped from the `tags` table by Phase 2.5.
     del display_name, category, is_proposed, is_exclusive
     conn.execute(
         "INSERT INTO tags (slug, usage_count, created_at) "
