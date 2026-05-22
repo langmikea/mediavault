@@ -45,7 +45,15 @@ VAULTED_ROOT  = BASE / "catalogs" / "vaulted"
 DOWNLOADS_DIR = Path(r"C:\Users\macun\Downloads")
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif",
-                        ".mp4", ".mov", ".avi", ".mkv", ".bmp", ".tiff", ".tif"}
+                        ".mp4", ".mov", ".avi", ".mkv", ".bmp", ".tiff", ".tif",
+                        # M4 (2026-05-22, audit brief §5.1 step 3): widen Path A
+                        # to accept page-saves, documents, and text artifacts.
+                        # _infer_media_type() (imgserver_extensions.py:215) maps
+                        # these to link/text. No thumbnail generators exist for
+                        # these extensions; generate_thumbnail() returns None and
+                        # process() treats no-thumb as a valid state (audit §3.4).
+                        # MP3/audio stays out of M4 scope - that is M2.
+                        ".html", ".htm", ".pdf", ".txt", ".md", ".json"}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BOOTSTRAP DEPENDENCIES
