@@ -22,6 +22,8 @@ enrichment_json.tags_proposed.
 """
 from typing import List
 
+from hr_filename import HR_ACTOR_TAGS  # noqa: E402 -- shared HR cluster actor table
+
 
 # C1 — path-based exhibit:* tag.
 # Brief §5.2 verbatim:
@@ -86,3 +88,96 @@ def apply_all_rules(raw_path: str, hr_tags: List[str]) -> List[str]:
     caller is responsible for deduplicating against any tags already
     in enrichment_json.tags_proposed."""
     return apply_exhibit_rule(raw_path, hr_tags) + apply_era_rule(hr_tags)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# C4 — Sibling-cluster parent_artifact_id auto-link
+# ─────────────────────────────────────────────────────────────────────────────
+# Brief §5.2 C4: "For HR-shape clusters (M5's parse hits), elect the
+# page_save HTML as the parent (storage_mode='referenced'), link the
+# audio + cover_art siblings to it. Or elect the audio file as parent
+# if no page_save exists. Policy: one rule per filename shape."
+#
+# Forward-only scope: identifies HR clusters from artifacts.local_asset_path
+# basename (using the M5 filename grammar). Artifacts whose basename has
+# been renamed during vaulting (e.g. MV-id.ext under catalogs/vaulted/)
+# are not matched — by-design narrow scope per the brief's "M5's parse
+# hits" wording. The 23 existing HR archive artifacts (which use HR
+# directory structure rather than flattened basenames) are not in C4 scope;
+# a separate _cowork/ backfill script can handle them later if desired.
+#
+# Parent election priority — page_save first (the canonical cluster head
+# per the brief), then audio (fallback when no page_save in cluster),
+# then cover_art, then artist_photo, then anything else.
+KIND_PRIORITY = ("page_save", "audio", "cover_art", "artist_photo")
+
+
+def _hr_cluster_key(local_asset_path):
+    """Return (actor, album_field, kind) tuple identifying this
+    artifact's HR cluster, or None if the basename does not match
+    M5's actor__album__kind__title.<ext> filename grammar.
+
+    Normalises Windows backslashes so paths from either OS parse.
+    """
+    if not local_asset_path:
+        return None
+    basename = str(local_asset_path).replace("\\", "/").rsplit("/", 1)[-1]
+    parts = basename.split("__", 3)
+    if len(parts) != 4:
+        return None
+    actor = parts[0].rstrip("_")
+    if actor not in HR_ACTOR_TAGS:
+        return None
+    return (actor, parts[1], parts[2])
+
+
+def link_hr_siblings(conn):
+    """C4 main entry point. For each HR cluster in artifacts where
+    siblings exist, elect a parent (page_save > audio > cover_art >
+    artist_photo > other) and set parent_artifact_id on the others.
+
+    Idempotent: only touches artifacts whose parent_artifact_id IS NULL.
+    Respects existing linkages (any already-parented sibling is left alone;
+    the un-parented siblings still elect a parent among themselves).
+
+    Returns (linked_count, clusters_processed_count).
+    """
+    clusters = {}
+    for r in conn.execute(
+        "SELECT id, parent_artifact_id, local_asset_path FROM artifacts"
+    ):
+        key = _hr_cluster_key(r["local_asset_path"])
+        if key is None:
+            continue
+        actor, album_field, kind = key
+        clusters.setdefault((actor, album_field), []).append(
+            (r["id"], kind, bool(r["parent_artifact_id"]))
+        )
+
+    linked = 0
+    processed = 0
+    kind_rank = {k: i for i, k in enumerate(KIND_PRIORITY)}
+    for cluster_key, members in clusters.items():
+        if len(members) < 2:
+            continue
+        # Sort by kind priority; the parent is the first unparented member.
+        members.sort(key=lambda m: kind_rank.get(m[1], 99))
+        parent_id = None
+        for m_id, m_kind, m_has_parent in members:
+            if not m_has_parent:
+                parent_id = m_id
+                break
+        if parent_id is None:
+            continue  # every member already parented; nothing to do
+        processed += 1
+        for m_id, m_kind, m_has_parent in members:
+            if m_id == parent_id or m_has_parent:
+                continue
+            conn.execute(
+                "UPDATE artifacts SET parent_artifact_id=? "
+                "WHERE id=? AND parent_artifact_id IS NULL",
+                (parent_id, m_id),
+            )
+            linked += 1
+    conn.commit()
+    return (linked, processed)

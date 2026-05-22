@@ -717,6 +717,14 @@ def process():
     conn.close()
     print(f"\nProcess complete. {processed} artifact(s) processed, {skipped} skipped, {recycled} recycled.")
 
+    # C4 (2026-05-22, audit brief §5.2): auto-link HR cluster siblings
+    # to their elected parent (page_save > audio > cover_art > artist_photo).
+    # See core/ingest_rules.py for the rule + idempotency guarantees.
+    from ingest_rules import link_hr_siblings
+    linked, clusters = link_hr_siblings(get_conn())
+    if linked or clusters:
+        print(f"  C4 sibling-link: {linked} new link(s) across {clusters} cluster(s).")
+
 
 def _parse_tags_json(s):
     if not s:
@@ -915,6 +923,13 @@ if __name__ == "__main__":
         process()
     elif cmd == "status":
         status()
+    elif cmd == "link-siblings":
+        # C4 (2026-05-22, audit brief §5.2): standalone invocation of the
+        # sibling-link pass. Same semantics as the post-process() hook;
+        # exposed separately so the operator can run it explicitly.
+        from ingest_rules import link_hr_siblings
+        linked, clusters = link_hr_siblings(get_conn())
+        print(f"link-siblings: {linked} new link(s) across {clusters} cluster(s).")
     else:
         print(f"Unknown command: {cmd}")
         print("Usage: python ingest_engine.py scan|process|status")
