@@ -483,10 +483,18 @@ def scan():
                         ).fetchone()
                         existing = json.loads(existing_row["enrichment_json"] or "{}") if existing_row and existing_row["enrichment_json"] else {}
                         merged = dict(existing)
+                        # M5 (2026-05-22, audit brief §5.1): EXIF merge —
+                        # union tags_proposed with any list pre-seeded by
+                        # queue_item (e.g. hr_filename.parse_hr_filename);
+                        # overwrite other keys as before. Without the union,
+                        # exif's tags_proposed (or its absence) would erase
+                        # the filename-grammar suggestions.
                         for k, v in exif.items():
-                            if merged.get(k) in (None, "", []):
+                            if k == "tags_proposed" and isinstance(v, list):
+                                existing_list = merged.get("tags_proposed", []) or []
+                                merged["tags_proposed"] = list(dict.fromkeys(existing_list + v))
+                            else:
                                 merged[k] = v
-                        merged.update({k: v for k, v in exif.items()})
                         # Ensure drop-zone files default to vaulted (engine will own them)
                         merged.setdefault("storage_mode", "vaulted")
                         conn.execute(
@@ -531,8 +539,18 @@ def queue_item(conn, raw_path, ingest_source):
        operator can override but rarely needs to. Eliminates the Gate
        3.1 NULL-media_type artifact pattern on the happy path."""
     from imgserver_extensions import _infer_media_type
+    from hr_filename import parse_hr_filename
     media_type = _infer_media_type(Path(raw_path))
-    enrichment_json = json.dumps({"media_type": media_type})
+    # M5 (2026-05-22, audit brief §5.1 step 3): seed tags_proposed
+    # from HR filename grammar for actor__album__kind__title files.
+    # Non-HR filenames return [] from the parser, leaving enrichment
+    # unchanged. Anchored to the operator's historical HR-cluster
+    # tagging (MV-HR-20260416-001 .. -014) — see core/hr_filename.py.
+    enrichment = {"media_type": media_type}
+    hr_tags = parse_hr_filename(Path(raw_path).name)
+    if hr_tags:
+        enrichment["tags_proposed"] = hr_tags
+    enrichment_json = json.dumps(enrichment)
     conn.execute("""
         INSERT INTO ingest_queue
             (ingest_source, raw_path, queued_at, status, enrichment_json)
