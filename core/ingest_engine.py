@@ -53,13 +53,24 @@ SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".hei
                         # these extensions; generate_thumbnail() returns None and
                         # process() treats no-thumb as a valid state (audit §3.4).
                         # MP3/audio stays out of M4 scope - that is M2.
-                        ".html", ".htm", ".pdf", ".txt", ".md", ".json"}
+                        ".html", ".htm", ".pdf", ".txt", ".md", ".json",
+                        # M2 (2026-05-22, audit brief §5.1 step 3): widen Path A
+                        # to accept audio. _infer_media_type() already maps these
+                        # to "audio". extract_id3() (added below) pre-seeds title /
+                        # artist / album / duration / bitrate from ID3 / Vorbis /
+                        # MP4 tags. APIC bytes intentionally NOT stored — those
+                        # belong to the museum-side delivery layer (audit §2.4).
+                        ".mp3", ".wav", ".flac", ".m4a", ".ogg"}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BOOTSTRAP DEPENDENCIES
 # ─────────────────────────────────────────────────────────────────────────────
 def bootstrap():
-    required = {"Pillow": "PIL", "pillow_heif": "pillow_heif", "send2trash": "send2trash"}
+    required = {"Pillow": "PIL", "pillow_heif": "pillow_heif",
+                "send2trash": "send2trash",
+                # M2 (2026-05-22, audit brief §5.1 step 3): mutagen powers
+                # extract_id3 — pure-Python, installs cleanly without compilation.
+                "mutagen": "mutagen"}
     for pkg, mod in required.items():
         try:
             __import__(mod)
@@ -459,6 +470,48 @@ def extract_exif(path):
     return out
 
 
+def extract_id3(path):
+    """M2 (2026-05-22, audit brief §5.1 step 3): extract audio
+    metadata via mutagen — title, artist, album, id3_year,
+    duration_seconds, bitrate_kbps. Returns a dict mirroring
+    extract_exif's shape; empty dict on failure or non-audio.
+
+    Field names use plain ID3 semantics (no xp_* prefix) since
+    these are the canonical operator-facing fields the inbox
+    displays for audio artifacts (see MV-HR-20260417-* artifact
+    set for the operator's historical description shape).
+
+    APIC (embedded cover art) is intentionally not extracted here
+    — that workflow lives at the museum-side delivery layer
+    (audit §2.4); storing 53KB of base64 per row in a TEXT column
+    would be wrong.
+    """
+    out = {}
+    try:
+        import mutagen
+        m = mutagen.File(str(path), easy=True)
+        if m is None:
+            return out  # not a mutagen-recognised audio file
+        if m.tags:
+            for tag_key, out_key in (("title",  "title"),
+                                     ("artist", "artist"),
+                                     ("album",  "album"),
+                                     ("date",   "id3_year")):
+                vals = m.tags.get(tag_key)
+                if vals:
+                    out[out_key] = str(vals[0]).strip()
+        info = getattr(m, "info", None)
+        if info is not None:
+            if getattr(info, "length", None):
+                out["duration_seconds"] = round(float(info.length), 1)
+            if getattr(info, "bitrate", None):
+                # mutagen reports bitrate in bps; convert to kbps.
+                out["bitrate_kbps"] = round(int(info.bitrate) / 1000)
+    except Exception:
+        pass
+    return out
+
+
 def scan():
     conn  = get_conn()
     added = 0
@@ -477,19 +530,27 @@ def scan():
                     print(f"  Queued (drop): {f.name}")
                     # Extract EXIF metadata and pre-populate enrichment_json
                     exif = extract_exif(str(f))
-                    if exif:
+                    id3 = extract_id3(str(f))
+                    # M2 (2026-05-22, audit brief §5.1 step 3): combine EXIF and
+                    # ID3 enrichment into a single metadata dict. Key spaces are
+                    # disjoint (exif: xp_*/post_date/gps_*/tags_proposed; id3:
+                    # title/artist/album/id3_year/duration_seconds/bitrate_kbps).
+                    metadata = {**exif, **id3}
+                    if metadata:
                         existing_row = conn.execute(
                             "SELECT enrichment_json FROM ingest_queue WHERE raw_path=?", (str(f),)
                         ).fetchone()
                         existing = json.loads(existing_row["enrichment_json"] or "{}") if existing_row and existing_row["enrichment_json"] else {}
                         merged = dict(existing)
-                        # M5 (2026-05-22, audit brief §5.1): EXIF merge —
+                        # M5 (2026-05-22, audit brief §5.1): metadata merge —
                         # union tags_proposed with any list pre-seeded by
                         # queue_item (e.g. hr_filename.parse_hr_filename);
                         # overwrite other keys as before. Without the union,
-                        # exif's tags_proposed (or its absence) would erase
+                        # exif/id3 tags_proposed (or its absence) would erase
                         # the filename-grammar suggestions.
-                        for k, v in exif.items():
+                        # M2: now drives the merge from the combined exif+id3
+                        # metadata dict above.
+                        for k, v in metadata.items():
                             if k == "tags_proposed" and isinstance(v, list):
                                 existing_list = merged.get("tags_proposed", []) or []
                                 merged["tags_proposed"] = list(dict.fromkeys(existing_list + v))
