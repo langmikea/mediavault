@@ -228,7 +228,18 @@ def queue_capture_json(conn, path: Path):
         # namespaced freeform pill.
         pill_states = {}
 
+        # M1 (2026-05-22, audit brief §5.1): seed media_type from the
+        # screenshot path's extension. url_only captures (no screenshot)
+        # default to 'link' since the artifact is fundamentally a URL
+        # reference. Operator can override in the inbox dropdown.
+        from imgserver_extensions import _infer_media_type
+        if screenshot_path:
+            seeded_media_type = _infer_media_type(Path(screenshot_path))
+        else:
+            seeded_media_type = "link"
+
         enrichment = {
+            "media_type":        seeded_media_type,
             "description_short": (data.get("post_text") or data.get("title") or "")[:120],
             "description_long":  (data.get("post_text") or "")[:1000],
             "extracted_text":    data.get("post_text") or "",
@@ -505,11 +516,20 @@ def already_queued(conn, raw_path):
 
 
 def queue_item(conn, raw_path, ingest_source):
-    """v0.4: no domain column."""
+    """v0.4: no domain column.
+       M1 (2026-05-22, audit brief §5.1): seed
+       enrichment_json.media_type at queue time via _infer_media_type()
+       so the inbox dropdown pre-fills with a confident default the
+       operator can override but rarely needs to. Eliminates the Gate
+       3.1 NULL-media_type artifact pattern on the happy path."""
+    from imgserver_extensions import _infer_media_type
+    media_type = _infer_media_type(Path(raw_path))
+    enrichment_json = json.dumps({"media_type": media_type})
     conn.execute("""
-        INSERT INTO ingest_queue (ingest_source, raw_path, queued_at, status)
-        VALUES (?, ?, ?, 'pending')
-    """, (ingest_source, raw_path, datetime.now().isoformat()))
+        INSERT INTO ingest_queue
+            (ingest_source, raw_path, queued_at, status, enrichment_json)
+        VALUES (?, ?, ?, 'pending', ?)
+    """, (ingest_source, raw_path, datetime.now().isoformat(), enrichment_json))
     conn.commit()
 
 

@@ -818,7 +818,7 @@ def handle_enrich(h: BaseHTTPRequestHandler) -> None:
 
     NOTE: The actual model invocation requires an Anthropic API key. If the
     key isn't configured we still echo back the prompt so the operator can
-    run enrichment manually via the offline enrich_helper.py workflow.
+    run enrichment manually (e.g. paste into a Claude session).
     """
     body = read_body(h)
     qid = body.get("queue_id")
@@ -863,8 +863,7 @@ def handle_enrich(h: BaseHTTPRequestHandler) -> None:
                 "ok": True,
                 "queue_id": qid,
                 "prompt": prompt,
-                "note": "ANTHROPIC_API_KEY not set; returning prompt only. "
-                        "Use enrich_helper.py for offline enrichment.",
+                "note": "ANTHROPIC_API_KEY not set; returning prompt only.",
             })
 
         # Network path (intentionally minimal — full vision requires multipart).
