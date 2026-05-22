@@ -601,6 +601,7 @@ def queue_item(conn, raw_path, ingest_source):
        3.1 NULL-media_type artifact pattern on the happy path."""
     from imgserver_extensions import _infer_media_type
     from hr_filename import parse_hr_filename
+    from ingest_rules import apply_all_rules
     media_type = _infer_media_type(Path(raw_path))
     # M5 (2026-05-22, audit brief §5.1 step 3): seed tags_proposed
     # from HR filename grammar for actor__album__kind__title files.
@@ -610,7 +611,17 @@ def queue_item(conn, raw_path, ingest_source):
     enrichment = {"media_type": media_type}
     hr_tags = parse_hr_filename(Path(raw_path).name)
     if hr_tags:
-        enrichment["tags_proposed"] = hr_tags
+        enrichment["tags_proposed"] = list(hr_tags)
+    # C1+C2 (2026-05-22, audit brief §5.2): apply path/tag-based rules.
+    # C1 returns exhibit:hunter_root for HR-cluster files and yt-staging
+    # paths; C2 returns era:* for album:* tags matching the canonical
+    # 3-row ALBUM_TO_ERA mapping (run_with_the_hunt → rwth, medusas_disco
+    # → medusas, seeds → seeds). See core/ingest_rules.py for the rule
+    # tables and the operator-locked-rule documentation.
+    rules_tags = apply_all_rules(raw_path, hr_tags)
+    if rules_tags:
+        existing = enrichment.get("tags_proposed", [])
+        enrichment["tags_proposed"] = list(dict.fromkeys(existing + rules_tags))
     enrichment_json = json.dumps(enrichment)
     conn.execute("""
         INSERT INTO ingest_queue
