@@ -28,6 +28,7 @@ import sqlite3
 import shutil
 import subprocess
 import json
+import hashlib  # M3 (2026-05-23): content-hash dedup
 from datetime import datetime, date
 from pathlib import Path
 
@@ -571,6 +572,17 @@ def scan():
 
 
 def already_queued(conn, raw_path):
+    """Check whether a file is already in the queue/processed pipeline.
+
+    Checks performed (in order, fast-to-slow):
+      1. Same raw_path already queued (active status).
+      2. Filename exists in intake/processed/ or intake/images/.
+      3. Filename appears at end of any queue raw_path (LIKE match).
+      4. M3 (2026-05-23, audit brief Â§5.1 + Â§3.10): file bytes match
+         any queue row's content_sha. Catches byte-identical files with
+         different names (e.g. HR cluster cover_art_1 == artist_photo).
+         Computed via _compute_content_sha on the candidate file.
+    """
     row = conn.execute(
         "SELECT status FROM ingest_queue WHERE raw_path = ? ORDER BY queue_id DESC LIMIT 1",
         (raw_path,)
@@ -589,7 +601,36 @@ def already_queued(conn, raw_path):
     ).fetchone()
     if rows is not None and rows["status"] in ("pending", "enriched", "keep", "approved"):
         return True
+    # M3 content-hash fallthrough (added 2026-05-23). Only fires when all
+    # path/filename checks miss. Cost: one SHA-256 of the candidate file
+    # per scan-time miss (~5-50ms typical). The query against indexed
+    # content_sha is O(rows) but cheap in practice.
+    try:
+        candidate_sha = _compute_content_sha(raw_path)
+    except OSError:
+        return False  # file unreadable; not a dedup case, let caller decide
+    hit = conn.execute(
+        "SELECT queue_id FROM ingest_queue WHERE content_sha = ? LIMIT 1",
+        (candidate_sha,),
+    ).fetchone()
+    if hit is not None:
+        print(f"  [dedup] {fname}: content_sha matches existing queue_id={hit[0]}")
+        return True
     return False
+
+
+def _compute_content_sha(raw_path):
+    """M3 (2026-05-23, audit brief Â§5.1 + Â§3.10): SHA-256 of the file
+    bytes. Used by queue_item to populate ingest_queue.content_sha;
+    used by already_queued to detect byte-duplicate files arriving
+    under different names. Streamed in 64KB chunks to handle large
+    media files cheaply (typical .mp3: ~25ms).
+    """
+    h = hashlib.sha256()
+    with open(raw_path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def queue_item(conn, raw_path, ingest_source):
@@ -623,11 +664,15 @@ def queue_item(conn, raw_path, ingest_source):
         existing = enrichment.get("tags_proposed", [])
         enrichment["tags_proposed"] = list(dict.fromkeys(existing + rules_tags))
     enrichment_json = json.dumps(enrichment)
+    # M3 (2026-05-23, audit brief Â§5.1 + Â§3.10): compute SHA-256 of
+    # the file bytes at queue time and store in ingest_queue.content_sha.
+    # This powers already_queued()'s content-hash dedup check.
+    content_sha = _compute_content_sha(raw_path)
     conn.execute("""
         INSERT INTO ingest_queue
-            (ingest_source, raw_path, queued_at, status, enrichment_json)
-        VALUES (?, ?, ?, 'pending', ?)
-    """, (ingest_source, raw_path, datetime.now().isoformat(), enrichment_json))
+            (ingest_source, raw_path, queued_at, status, enrichment_json, content_sha)
+        VALUES (?, ?, ?, 'pending', ?, ?)
+    """, (ingest_source, raw_path, datetime.now().isoformat(), enrichment_json, content_sha))
     conn.commit()
 
 
