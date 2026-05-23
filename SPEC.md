@@ -279,7 +279,8 @@ One record per artifact. All fields stored in SQLite. The canonical schema snipp
       description_short        TEXT,
       description_long         TEXT,
       extracted_text           TEXT,
-      media_type               TEXT,                            -- link|mixed|photo|text|video|unknown  (target set per v2.1-target §6.1; live drift documented in §6.6 below)
+      media_type               TEXT NOT NULL                    -- photo|video|audio|link|text|mixed|other (canonical set per §6.6; CHECK enforced 2026-05-23)
+                                   CHECK(media_type IN ('photo','video','audio','link','text','mixed','other')),
 
       local_asset_path         TEXT,
       thumbnail_path           TEXT,
@@ -369,33 +370,52 @@ See `CHANGELOG.md` v0.5.3 and
 
 ---
 
-### 6.6 — `media_type` target set vs live data (Phase 3, 2026-05-20)
+### 6.6 — `media_type` canonical set (resolved 2026-05-23)
 
-The `media_type` column comment in §6's `CREATE TABLE artifacts` block lists the
-v2.1-target set: `link, mixed, photo, text, video, unknown`. This documents the
-*target*, not the *current live state*.
+The canonical set is **`{photo, video, audio, link, text, mixed, other}`** —
+seven values, enforced by `CHECK(media_type IN (...))` on the `artifacts`
+table since 2026-05-23 (operator-approved Option A: `NOT NULL CHECK`,
+"fail-loud on future bugs that forget media_type"). The same set is
+mirrored in the MV validator at `core/imgserver_extensions.py:107`
+(`MEDIA_TYPE` constant).
 
-**Current live drift, as of 2026-05-20:** the live `artifacts` table
-contains rows with `media_type='text-only'` (22) and `media_type IS NULL` (7)
-in addition to values in the target set. The MV validator at
-`core/imgserver_extensions.py:107` (`MEDIA_TYPE = {"photo", "video", "audio",
-"link", "text", "mixed", "other"}`) is a third, partially-overlapping set
-that accepts `audio` and `other` (zero live rows) and rejects `text-only`
-and `unknown`. None of these are aligned today.
+**Historical drift, now resolved:** prior to the 2026-05-22/23 cleanup
+arc, the live `artifacts` table contained rows with `media_type='text-only'`
+(22), `media_type='mixed'` (3), and `media_type IS NULL` (4) in addition
+to values in the canonical set. The drift between the documented set, the
+validator set, and live data was documented in this section as a known
+out-of-scope deferral. The pre-resolution Shape A discipline ("align
+SPEC.md with the *target* set, surface the drift honestly in prose, and
+leave the runtime untouched until the matching schema and data work is
+green-lit") is preserved as the playbook for any future drift-then-resolve
+sequence.
 
-**This phase (Phase 3 of the source-of-truth refactor) deliberately scopes only
-the doc comment.** Aligning the validator, normalizing the live `text-only`
-and NULL rows, and adding a CHECK constraint on `media_type` are *not* done
-here. Those are named in `docs/SOURCE_OF_TRUTH_REFACTOR_SCOPING_BRIEF-
-20260519-220000.md` §4.5 as "out of scope for this brief — that work is its
-own §12 item, named separately." The brief is correct: that work needs its
-own operator decision (notably: what does `text-only` mean — should it
-normalize to `text`?), pre-write backup, normalization script, and CHECK
-addition. Each piece deserves its own scoping and run report.
+**Resolution timeline (all 2026-05-22/23):**
 
-The truly-minimal Shape A taken here matches Criterion 5's discipline: align
-SPEC.md with the *target* set, surface the drift honestly in prose, and leave
-the runtime untouched until the matching schema and data work is green-lit.
+- **M7 + O5** (operator-locked decisions per audit brief §4.3): 22 `text-only`
+  rows normalized to `link`; 3 `mixed` rows per-row decided
+  (`MV-HR-20260405-010` and `-034` → `link`;
+  `MV-HR-20260416-008` → `audio`). See
+  `_cowork/M7_RUN_REPORT-20260522T234721Z.md`.
+- **M6 + O4**: 4 `NULL` rows normalized; 2 mechanical (`.MOV` → `video`,
+  `.jpg` → `photo`) + 2 operator-confirmed FB extension captures
+  → `link`. See `_cowork/M6_RUN_REPORT-20260523T012144Z.md`.
+- **CHECK constraint migration** (table-rebuild; this section's locked state):
+  added `NOT NULL CHECK(media_type IN canonical_set)` via SQLite
+  table-rebuild. See `_cowork/CHECK_RUN_REPORT-20260523T134500Z.md`.
+
+**Post-cleanup distribution** (88 artifacts, all canonical):
+`link` (33), `photo` (26), `audio` (16), `video` (11), `text` (2). Zero
+NULL, zero `text-only`, zero `mixed` (the deprecated-but-allowed value
+`mixed` has 0 live rows; new artifacts default to specific types per the
+M1 `_infer_media_type` extension dispatch).
+
+The audit brief that drove the resolution is
+`C:\AI\Projects\weird-baby-museum\docs\INGEST_BEHAVIOR_AUDIT-20260522-182616.md`
+(§4 covers the taxonomy question; §4.3 step 3 covers the CHECK constraint).
+The brief's §4.3 trilogy (step 1: SPEC.md update; step 2: normalize live
+data; step 3: CHECK constraint) is now complete — this section update
+closes step 1.
 
 ## 7. Thumbnail Specification
 
