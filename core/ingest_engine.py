@@ -742,6 +742,18 @@ def process():
             conn.commit()
             print(f"  Thumbnail: {thumb_path.name}")
 
+        # C3 (2026-05-23, audit brief §5.2): if the source is HEIC/HEIF and
+        # the operator_config flag is on, produce a JPEG primary at
+        # catalogs/_assets/<artifact_id>.jpg. Default is off per operator-
+        # locked Option A. Idempotent: skips if the JPEG already exists.
+        from operator_config import TRANSCODE_HEIC_AT_INGEST, HEIC_JPEG_QUALITY
+        if TRANSCODE_HEIC_AT_INGEST and raw_path.suffix.lower() in (".heic", ".heif"):
+            jpeg_primary = THUMBS_ROOT / "_assets" / f"{artifact_id}.jpg"
+            if jpeg_primary.exists():
+                print(f"  HEIC transcode: skip (already exists: {jpeg_primary.name})")
+            elif _transcode_heic_to_jpeg(raw_path, jpeg_primary, HEIC_JPEG_QUALITY):
+                print(f"  HEIC transcode: {raw_path.name} -> {jpeg_primary.name}")
+
         move_original(conn, r["queue_id"], raw_path, r.get("ingest_source", ""))
         processed += 1
 
@@ -784,6 +796,31 @@ def _parse_tags_json(s):
 # ─────────────────────────────────────────────────────────────────────────────
 # THUMBNAIL GENERATION
 # ─────────────────────────────────────────────────────────────────────────────
+def _transcode_heic_to_jpeg(heic_path: Path, jpeg_path: Path, quality: int = 85) -> bool:
+    """C3 (2026-05-23, audit brief §5.2): transcode a HEIC/HEIF file to JPEG.
+    Uses pillow_heif for HEIC decode + PIL for JPEG encode. Atomic via
+    temp-then-rename to avoid leaving a partial JPEG on disk on failure.
+    Returns True on success, False on failure (caught + logged). Creates
+    parent directory as needed.
+    """
+    try:
+        import pillow_heif
+        pillow_heif.register_heif_opener()
+        jpeg_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = jpeg_path.with_suffix(jpeg_path.suffix + ".tmp")
+        img = Image.open(heic_path).convert("RGB")
+        img.save(tmp, "JPEG", quality=quality, optimize=True)
+        tmp.replace(jpeg_path)
+        return True
+    except Exception as e:
+        print(f"  HEIC transcode error ({heic_path.name}): {e}")
+        try:
+            if tmp.exists(): tmp.unlink()
+        except Exception:
+            pass
+        return False
+
+
 def generate_thumbnail(raw_path: Path, artifact_id: str, enrichment_json: str = None) -> Path | None:
     """v0.4: thumbnails live at catalogs/_thumbs/<artifact_id>.jpg (no per-domain folder)."""
     thumb_dir  = THUMBS_ROOT / "_thumbs"
