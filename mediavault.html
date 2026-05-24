@@ -159,7 +159,7 @@ textarea{resize:vertical;font:13px var(--sans)}
 .pillCategory[open] > summary::before{transform:rotate(90deg);display:inline-block}
 .pillCategory .summaryCount{font:10px var(--mono);color:var(--text2);font-weight:400}
 .pillCategory .catWarn{color:var(--red);margin-left:6px;font-size:10px}
-.pillCategory .pills{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px}
+.pillCategory .pills{display:flex;flex-direction:column;gap:4px;padding:6px 8px}
 .pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;font:11px var(--mono);border-radius:3px;cursor:pointer;user-select:none;border:1px solid transparent;white-space:nowrap}
 .pill .cnt{opacity:.55;margin-left:3px;font-size:9px}
 .pill.on-conf{background:var(--gold);color:#111;border-color:var(--gold)}
@@ -1248,9 +1248,13 @@ function renderPillWall(){
       : '<span style="font:11px var(--mono);color:var(--text2);font-style:italic;align-self:center">(nothing applied yet)</span>'}
   </div>`;
 
-  // v0.6 Item 8d follow-up C5/C6: categories are always-open sections now
-  // — no <details>/<summary>, no collapse toggle. Mike wants the whole
-  // pill surface visible at once; hiding any of it is friction.
+  // Tagging Audit S1 §9.7 (2026-05-24): re-wire <details>/<summary> for
+  // each .pillCategory group. Auto-collapse on any-on — the moment any
+  // pill in a group is on_confident or on_uncertain, the group renders
+  // closed; toggling all pills OFF re-opens it (next renderPillWall()
+  // re-derives the open attr from onCount). CSS at lines 152-162 already
+  // styles details/summary; this reverses V0.6 Item 8d follow-up C5/C6
+  // per §9.7's friction-reducer posture.
   host.innerHTML = accumulatedHtml + cats.map(cat => {
     const label = cat === '__uncategorized__' ? 'UNCATEGORIZED' : cat.toUpperCase();
     const pills = byCat[cat].slice();
@@ -1271,10 +1275,11 @@ function renderPillWall(){
       return st === 'on_confident' || st === 'on_uncertain';
     }).length;
     const catWarn = catWarnings[cat] ? `<span class="catWarn" title="${esc(catWarnings[cat])}">&#9888;</span>` : '';
-    return `<div class="pillCategory pillCategoryOpen">
-      <div class="pillCatHead"><span>${esc(label)}${catWarn}</span><span class="summaryCount">${onCount}/${pills.length}</span></div>
+    const openAttr = onCount === 0 ? ' open' : '';
+    return `<details class="pillCategory"${openAttr}>
+      <summary><span>${esc(label)}${catWarn}</span><span class="summaryCount">${onCount}/${pills.length}</span></summary>
       <div class="pills">${pills.map(t => pillHtml(t)).join('')}</div>
-    </div>`;
+    </details>`;
   }).join('');
 
   // Field-level warnings: glow the relevant control
