@@ -13,6 +13,14 @@
   --red:#c44;--green:#4a4;--blue:#4a8;
   --border:#333;
   --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  /* pill-redesign 2026-05-24 §6: museum-aligned pill palette, scoped to pills.
+     MV's --gold etc. stay untouched — only the pill aesthetic adopts museum
+     constants (HrExhibitFlow.jsx:299 pill style function). */
+  --pill-gold:#b8974a;       /* museum GOLD / GOLD_HI */
+  --pill-ink-soft:#0d0d0d;   /* museum INK_SOFT (active bg) */
+  --pill-border:#1a1a1a;     /* museum BORDER (default outline) */
+  --pill-border-hi:#252525;  /* museum BORDER_HI (dimmed) */
+  --pill-text-muted:#6a5520; /* museum default-text muted gold */
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--text);font:14px/1.5 var(--sans);overflow:hidden;height:100vh}
@@ -158,17 +166,44 @@ textarea{resize:vertical;font:13px var(--sans)}
 .pillCategory > summary::before{content:'▸';margin-right:6px;color:var(--gold2);transition:transform .1s}
 .pillCategory[open] > summary::before{transform:rotate(90deg);display:inline-block}
 .pillCategory .summaryCount{font:10px var(--mono);color:var(--text2);font-weight:400}
+/* pill-redesign 2026-05-24 §3+§8: when a category group is collapsed because
+   it has 'on' pills, the summary header shows those selected values inline
+   as muted-outlined pills (Pass B aesthetic). Click on a summary-inline
+   pill = togglePill (same as APPLIED-strip click → 'neutral'). The pill's
+   own onclick stops propagation so the <details> doesn't toggle. */
+.pillCategory > summary > .summaryValues{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-left:6px}
 .pillCategory .catWarn{color:var(--red);margin-left:6px;font-size:10px}
 .pillCategory .pills{display:flex;flex-direction:column;gap:4px;padding:6px 8px}
-.pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;font:11px var(--mono);border-radius:3px;cursor:pointer;user-select:none;border:1px solid transparent;white-space:nowrap}
-.pill .cnt{opacity:.55;margin-left:3px;font-size:9px}
-.pill.on-conf{background:var(--gold);color:#111;border-color:var(--gold)}
-.pill.on-unc{background:var(--gold);color:#111;border:1px dashed #000}
-.pill.off-sus{background:transparent;color:var(--gold);border:1px solid var(--gold)}
-.pill.off-may{background:transparent;color:var(--text2);border:1px dashed var(--border);opacity:.65}
+/* pill-redesign 2026-05-24 §6: museum-aligned aesthetic. Sharp corners,
+   sansBody, muted-outlined default → INK_SOFT/GOLD active. The legacy
+   five-class CSS (.on-conf / .on-unc / .off-sus / .off-may / .proposed)
+   was replaced by .pill.on / .pill.neutral / .pill.exclude — see pillHtml.
+   .pill.warn (red pulse) is orthogonal to state and preserved. */
+.pill{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:0 10px;height:26px;line-height:24px;
+  font:500 11.5px/24px var(--sans);letter-spacing:.02em;
+  border-radius:0;cursor:pointer;user-select:none;white-space:nowrap;
+  background:transparent;color:var(--pill-text-muted);
+  border:1px solid var(--pill-border);
+  transition:border-color .12s,color .12s,background .12s,opacity .12s;
+}
+.pill .cnt{opacity:.7;margin-left:2px;font-size:10px;font-weight:500;font-variant-numeric:tabular-nums;color:inherit}
+.pill.on{background:var(--pill-ink-soft);color:var(--pill-gold);border-color:var(--pill-gold)}
+.pill.neutral{background:transparent;color:var(--pill-text-muted);border-color:transparent;opacity:.7}
+.pill.exclude{background:transparent;color:var(--pill-border-hi);border-color:var(--pill-border-hi);text-decoration:line-through}
 .pill.warn{background:transparent;color:var(--red);border:1px solid var(--red);animation:warn-pulse 1.5s infinite;cursor:default}
-.pill.proposed{font-style:italic}
-.pill:hover:not(.warn){outline:1px solid var(--gold2)}
+.pill:hover:not(.warn){border-color:var(--pill-gold)}
+/* pill-redesign 2026-05-24 §5: APPLIED-strip spreadsheet layout. One row
+   per category-with-applied-pills. Left col = category name (muted, fixed
+   width), right col = value-pills wrapping. Both 'on' and 'neutral' pills
+   appear (neutral = was-applied-this-session, toggled off, dimmed). */
+.pillAccumulated{display:flex;flex-direction:column;gap:6px;padding:8px 10px;margin-bottom:8px;background:var(--bg3);border:1px solid var(--border);border-radius:0;min-height:38px}
+.pillAccumulated.empty{flex-direction:row;align-items:center;justify-content:flex-start}
+.pillAcc-empty{font:11px var(--mono);color:var(--text2);font-style:italic}
+.pillAcc-row{display:flex;align-items:flex-start;gap:12px;min-height:26px}
+.pillAcc-cat{flex:0 0 110px;font:500 10.5px/26px var(--sans);color:var(--pill-text-muted);letter-spacing:.05em;text-transform:uppercase;user-select:none}
+.pillAcc-vals{flex:1 1 auto;display:flex;flex-wrap:wrap;gap:4px}
 @keyframes warn-pulse{50%{opacity:.5}}
 .pillAddWrap{display:flex;gap:6px;margin-top:6px;padding:4px 0}
 #pillAdd{flex:1;font-family:var(--mono)}
@@ -694,8 +729,20 @@ let VAULT_VISIBLE_IDS = [];
 let VOCAB_SORT_COL = null;
 let VOCAB_SORT_DIR = null;
 let CURRENT_APPLIED_TAGS = []; // tag slugs applied to current inbox item (derived from CURRENT_PILL_STATES)
-// v0.5 — pill state model. slug -> 'on_confident' | 'on_uncertain' | 'off_suspected' | 'off_maybe'
+// v0.5 / pill-redesign 2026-05-24 — pill state model.
+//   slug -> 'on'       (applied)
+//   slug -> 'neutral'  (was applied this session, toggled off; APPLIED strip
+//                       still shows it muted until next artifact open)
+//   slug -> 'exclude'  (future tri-state; plumbed in render/toggle but not
+//                       user-reachable in v1)
+//   absent             (never applied)
+// Legacy values ('on_confident' / 'on_uncertain' / 'off_suspected' /
+// 'off_maybe') are normalized to the above at load time by populateInboxFields.
 let CURRENT_PILL_STATES = {};
+// pill-redesign 2026-05-24 §7: tracks slugs the operator has physically
+// clicked this artifact session. Save is blocked until at least one entry
+// exists — AI proposals alone don't approve themselves.
+let OPERATOR_TOUCHED_SLUGS = new Set();
 let CURRENT_WARNINGS = []; // warning slugs from attention rules
 
 // v0.5 categories (mirror core/attention_rules.py constants).
@@ -870,6 +917,7 @@ function inboxSelectItem(queueId){
 // thing — no artifact selected means nothing to show.
 function clearInboxRight(){
   CURRENT_PILL_STATES = {};
+  OPERATOR_TOUCHED_SLUGS = new Set();
   CURRENT_WARNINGS = [];
   const pillWall = document.getElementById('pillWall');
   if(pillWall) pillWall.innerHTML = '';
@@ -933,38 +981,53 @@ function populateInboxFields(q){
   // v0.6 Item 8d follow-up: for a re-queued artifact, seed the pill states
   // from the artifact's persisted tags (all on_confident) so the user sees
   // the tags they already curated instead of an empty pill wall.
+  // pill-redesign 2026-05-24 §7: artifact-open resets operator-touched set
+  // AND scrubs any stale 'neutral' entries (those only persist within a
+  // single artifact session — see §2 "on next artifact open, gone from APPLIED").
   CURRENT_PILL_STATES = {};
+  OPERATOR_TOUCHED_SLUGS = new Set();
   if(art && Array.isArray(art._tags)){
     for(const slug of art._tags){
       const s = slugify(slug);
-      if(s) CURRENT_PILL_STATES[s] = 'on_confident';
+      if(s) CURRENT_PILL_STATES[s] = 'on';
     }
   } else if(enr.pill_states && typeof enr.pill_states === 'object'){
     for(const [slug, state] of Object.entries(enr.pill_states)){
       if(!slug) continue;
       const s = slugify(slug);
-      if(s) CURRENT_PILL_STATES[s] = state;
+      if(!s) continue;
+      // Normalize legacy states. 'on_confident' + 'on_uncertain' → 'on'.
+      // 'off_suspected' + 'off_maybe' → drop (= never-applied). 'neutral'
+      // is dropped here too: it should not have been persisted, but be
+      // defensive (older saves predating the save-side filter).
+      if(state === 'on_confident' || state === 'on_uncertain' || state === 'on'){
+        CURRENT_PILL_STATES[s] = 'on';
+      } else if(state === 'exclude'){
+        CURRENT_PILL_STATES[s] = 'exclude';
+      }
+      // else: legacy off_* or unknown — drop entirely.
     }
   } else {
-    // v0.4 compat — known = on_confident, proposed = on_uncertain
+    // v0.4 compat — known + proposed both load as 'on' (operator-touched
+    // tracker enforces the save gate).
     if(Array.isArray(enr.tags)){
-      for(const slug of enr.tags){ const s = slugify(slug); if(s) CURRENT_PILL_STATES[s] = 'on_confident'; }
+      for(const slug of enr.tags){ const s = slugify(slug); if(s) CURRENT_PILL_STATES[s] = 'on'; }
     }
     if(Array.isArray(enr.tags_known)){
-      for(const slug of enr.tags_known){ const s = slugify(slug); if(s) CURRENT_PILL_STATES[s] = 'on_confident'; }
+      for(const slug of enr.tags_known){ const s = slugify(slug); if(s) CURRENT_PILL_STATES[s] = 'on'; }
     }
     if(Array.isArray(enr.tags_proposed)){
-      for(const slug of enr.tags_proposed){ const s = slugify(slug); if(s && !CURRENT_PILL_STATES[s]) CURRENT_PILL_STATES[s] = 'on_uncertain'; }
+      for(const slug of enr.tags_proposed){ const s = slugify(slug); if(s && !CURRENT_PILL_STATES[s]) CURRENT_PILL_STATES[s] = 'on'; }
     }
-    // v0.4 author_name → synthesize an author:<slug> on_uncertain pill
+    // v0.4 author_name → synthesize an author:<slug> 'on' pill
     if(enr.author_name){
       const aslug = slugify('author:' + enr.author_name);
-      if(aslug && !CURRENT_PILL_STATES[aslug]) CURRENT_PILL_STATES[aslug] = 'on_uncertain';
+      if(aslug && !CURRENT_PILL_STATES[aslug]) CURRENT_PILL_STATES[aslug] = 'on';
     }
   }
-  // Derived list of currently-on slugs (compat with old code paths)
+  // Derived list of currently-on slugs (compat with old code paths).
   CURRENT_APPLIED_TAGS = Object.entries(CURRENT_PILL_STATES)
-    .filter(([_, st]) => st === 'on_confident' || st === 'on_uncertain')
+    .filter(([_, st]) => st === 'on')
     .map(([s]) => s);
 
   // Compute warnings from current artifact + pill states (R1-R5, JS port of attention_rules.py)
@@ -1021,14 +1084,19 @@ async function inboxSave(release){
   }
   // v0.5: derive applied tags from pill_states (on_confident | on_uncertain count as applied).
   syncAppliedFromStates();
-  // v0.6 Item 8d C5: gate save-to-vault on minimum tagging. Mike's rule:
-  // "Items are to remain in INBOX until adequately tagged." Require at
-  // least one on_confident tag, and reuse R1-R5 attention rules — any
-  // missing_category warning blocks the save. Uncertain/proposed pills
-  // don't count as commitment, only confirmed tags do.
-  const anyConfident = Object.values(CURRENT_PILL_STATES).some(s => s === 'on_confident');
-  if(!anyConfident){
-    toast('Save blocked: needs at least 1 confirmed tag','err');
+  // v0.6 Item 8d C5 / pill-redesign 2026-05-24 §7: gate save-to-vault.
+  // Decomposed into two checks:
+  //   (1) at least one pill must currently be 'on' (anything was applied)
+  //   (2) operator must have physically clicked at least one pill this
+  //       session (AI proposals alone don't approve themselves — discipline
+  //       preserved across the state-model collapse).
+  const anyOn = Object.values(CURRENT_PILL_STATES).some(s => s === 'on');
+  if(!anyOn){
+    toast('Save blocked: needs at least 1 applied tag','err');
+    return;
+  }
+  if(OPERATOR_TOUCHED_SLUGS.size === 0){
+    toast('Save blocked: confirm tags — click at least one pill','err');
     return;
   }
   const _warn = computeWarnings();
@@ -1052,7 +1120,9 @@ async function inboxSave(release){
     description_long: document.getElementById('fLongDesc').value || null,
     extracted_text: document.getElementById('fExtractedText').value || null,
     tags: CURRENT_APPLIED_TAGS,
-    pill_states: {...CURRENT_PILL_STATES},
+    // pill-redesign 2026-05-24 §2: 'neutral' entries are session-only
+    // (visible-but-muted in APPLIED until next open). Don't persist them.
+    pill_states: Object.fromEntries(Object.entries(CURRENT_PILL_STATES).filter(([_, st]) => st === 'on' || st === 'exclude')),
     notes: document.getElementById('fNotes').value || null
   };
   try{
@@ -1111,20 +1181,24 @@ function renderAppliedPills(){
 function addAppliedTag(slug){
   slug = slugify(slug);
   if(!slug) return;
+  // pill-redesign 2026-05-24 §7: any code path that activates a pill counts
+  // as operator interaction for the save gate.
+  OPERATOR_TOUCHED_SLUGS.add(slug);
   // v0.5: use pill-state model. Exclusivity is controlled by vocab.is_exclusive (category scope).
   const t = TAGS_BY_SLUG[slug];
   if(t && t.category && t.is_exclusive){
-    // Clear other on_* pills in the same exclusive category.
+    // pill-redesign 2026-05-24 §1+§2: clearing siblings in an exclusive
+    // category sets them 'neutral' (visible-but-muted in APPLIED until
+    // next open), not delete (which would vanish them mid-flow).
     for(const [s, st] of Object.entries(CURRENT_PILL_STATES)){
       if(s === slug) continue;
       const other = TAGS_BY_SLUG[s];
-      if(other && other.category === t.category && (st === 'on_confident' || st === 'on_uncertain')){
-        // Drop the pill entirely (off_suspected would confuse the user here).
-        delete CURRENT_PILL_STATES[s];
+      if(other && other.category === t.category && st === 'on'){
+        CURRENT_PILL_STATES[s] = 'neutral';
       }
     }
   }
-  CURRENT_PILL_STATES[slug] = 'on_confident';
+  CURRENT_PILL_STATES[slug] = 'on';
   syncAppliedFromStates();
   CURRENT_WARNINGS = computeWarnings();
   renderPillWall();
@@ -1132,8 +1206,13 @@ function addAppliedTag(slug){
   renderTagBrowse();
 }
 function removeAppliedTag(slug){
-  // v0.5: removing from UI means drop the pill entirely.
-  delete CURRENT_PILL_STATES[slug];
+  // pill-redesign 2026-05-24 §1+§2: called from the hidden tagPicker
+  // X-button. Match togglePill semantics — don't delete, set 'neutral'
+  // so behavior is consistent if/when this surface is ever re-enabled.
+  OPERATOR_TOUCHED_SLUGS.add(slug);
+  if(CURRENT_PILL_STATES[slug] === 'on'){
+    CURRENT_PILL_STATES[slug] = 'neutral';
+  }
   syncAppliedFromStates();
   CURRENT_WARNINGS = computeWarnings();
   renderPillWall();
@@ -1142,7 +1221,7 @@ function removeAppliedTag(slug){
 }
 function syncAppliedFromStates(){
   CURRENT_APPLIED_TAGS = Object.entries(CURRENT_PILL_STATES)
-    .filter(([_, st]) => st === 'on_confident' || st === 'on_uncertain')
+    .filter(([_, st]) => st === 'on')
     .map(([s]) => s);
 }
 
@@ -1158,7 +1237,7 @@ function computeWarnings(){
   const q = (INBOX_IDX >= 0) ? QUEUE[INBOX_IDX] : null;
   const ingestSource = q ? (q.ingest_source || '') : '';
   const onSlugs = new Set(Object.entries(CURRENT_PILL_STATES)
-    .filter(([_, st]) => st === 'on_confident' || st === 'on_uncertain')
+    .filter(([_, st]) => st === 'on')
     .map(([s]) => s));
   function countInCategory(cat){
     let n = 0;
@@ -1235,18 +1314,43 @@ function renderPillWall(){
   // can see at a glance which pills are on without scanning each section.
   // Updates on every renderPillWall() call (i.e. whenever a pill is
   // clicked), so it stays in sync.
+  // pill-redesign 2026-05-24 §2: APPLIED shows both 'on' (active) and
+  // 'neutral' (session-toggled-off-but-still-visible) entries.
   const appliedAll = TAG_LIST
     .filter(t => {
       const st = CURRENT_PILL_STATES[t.slug];
-      return st === 'on_confident' || st === 'on_uncertain';
+      return st === 'on' || st === 'neutral';
     })
     .sort((a, b) => (a.category||'').localeCompare(b.category||'') || a.slug.localeCompare(b.slug));
-  const accumulatedHtml = `<div class="pillAccumulated" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;margin-bottom:8px;background:var(--bg3);border:1px solid var(--gold2);border-radius:4px;min-height:28px">
-    <span style="font:600 10px var(--mono);color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-right:4px;align-self:center">Applied (${appliedAll.length})</span>
-    ${appliedAll.length
-      ? appliedAll.map(t => pillHtml(t)).join('')
-      : '<span style="font:11px var(--mono);color:var(--text2);font-style:italic;align-self:center">(nothing applied yet)</span>'}
-  </div>`;
+  // pill-redesign 2026-05-24 §5: spreadsheet layout for the APPLIED strip.
+  // Group appliedAll by category, render one row per category (category-name
+  // left col, value-pills right col). CATEGORY_ORDER pins are honoured for
+  // the order; uncategorized stays last.
+  let accumulatedHtml;
+  if(appliedAll.length === 0){
+    accumulatedHtml = '<div class="pillAccumulated empty"><span class="pillAcc-empty">(nothing applied yet)</span></div>';
+  } else {
+    const byCatApplied = {};
+    for(const t of appliedAll){
+      const cat = t.category || '__uncategorized__';
+      if(!byCatApplied[cat]) byCatApplied[cat] = [];
+      byCatApplied[cat].push(t);
+    }
+    const knownCats = CATEGORY_ORDER.filter(c => byCatApplied[c]);
+    const restCats = Object.keys(byCatApplied)
+      .filter(c => !CATEGORY_ORDER.includes(c) && c !== '__uncategorized__')
+      .sort();
+    const orderedCats = [...knownCats, ...restCats];
+    if(byCatApplied['__uncategorized__']) orderedCats.push('__uncategorized__');
+    const rowsHtml = orderedCats.map(cat => {
+      const label = cat === '__uncategorized__' ? '(uncategorized)' : cat;
+      return '<div class="pillAcc-row">'
+        + `<span class="pillAcc-cat">${esc(label)}</span>`
+        + `<span class="pillAcc-vals">${byCatApplied[cat].map(t => pillHtml(t)).join('')}</span>`
+        + '</div>';
+    }).join('');
+    accumulatedHtml = `<div class="pillAccumulated">${rowsHtml}</div>`;
+  }
 
   // Tagging Audit S1 §9.7 (2026-05-24): re-wire <details>/<summary> for
   // each .pillCategory group. Auto-collapse on any-on — the moment any
@@ -1258,26 +1362,36 @@ function renderPillWall(){
   host.innerHTML = accumulatedHtml + cats.map(cat => {
     const label = cat === '__uncategorized__' ? 'UNCATEGORIZED' : cat.toUpperCase();
     const pills = byCat[cat].slice();
-    // Sort: on_confident > on_uncertain > off_suspected > off_maybe > unset
+    // pill-redesign 2026-05-24 §7: collapsed rank — 'on' > 'neutral' > absent.
+    // ('exclude' future-plumbed: sits between neutral and absent for now.)
     const stateRank = s => {
       const st = CURRENT_PILL_STATES[s];
-      if(st === 'on_confident') return 0;
-      if(st === 'on_uncertain') return 1;
-      if(st === 'off_suspected') return 2;
-      if(st === 'off_maybe') return 3;
-      return 4;
+      if(st === 'on') return 0;
+      if(st === 'neutral') return 1;
+      if(st === 'exclude') return 2;
+      return 3;
     };
     pills.sort((a,b) => stateRank(a.slug) - stateRank(b.slug)
       || (b.usage_count||0) - (a.usage_count||0)
       || a.slug.localeCompare(b.slug));
-    const onCount = pills.filter(t => {
-      const st = CURRENT_PILL_STATES[t.slug];
-      return st === 'on_confident' || st === 'on_uncertain';
-    }).length;
+    // pill-redesign 2026-05-24 §3+§8: derive both the list of 'on' pills
+    // (for inline summary-header render) and the count (for the openAttr
+    // gate). Only 'on' counts as "answered" — a group whose only pills are
+    // 'neutral' (all toggled off this session) re-opens.
+    const onPills = pills.filter(t => CURRENT_PILL_STATES[t.slug] === 'on');
+    const onCount = onPills.length;
     const catWarn = catWarnings[cat] ? `<span class="catWarn" title="${esc(catWarnings[cat])}">&#9888;</span>` : '';
     const openAttr = onCount === 0 ? ' open' : '';
+    // pill-redesign 2026-05-24 §3+§8: when collapsed (onCount > 0), surface
+    // the selected pills inline in the summary header so the operator can
+    // see the answer without expanding the group. The pills inherit the
+    // Pass B 'on' aesthetic; click handlers stopPropagation so they don't
+    // toggle <details> open/closed.
+    const summaryValuesHtml = onCount > 0
+      ? `<span class="summaryValues">${onPills.map(t => pillHtml(t)).join('')}</span>`
+      : '';
     return `<details class="pillCategory"${openAttr}>
-      <summary><span>${esc(label)}${catWarn}</span><span class="summaryCount">${onCount}/${pills.length}</span></summary>
+      <summary><span>${esc(label)}${catWarn}</span>${summaryValuesHtml}<span class="summaryCount">${onCount}/${pills.length}</span></summary>
       <div class="pills">${pills.map(t => pillHtml(t)).join('')}</div>
     </details>`;
   }).join('');
@@ -1298,28 +1412,57 @@ function renderPillWall(){
   }
 }
 
+// pill-redesign 2026-05-24 §4: pills inside category groups render just
+// the value portion of the display_name, not the "Category:Value" prefix
+// that lives in the DB. The category context is provided by the group's
+// own header (renderPillWall) or by the APPLIED row's left column (Pass D).
+// Defensive: if display_name is empty/null, fall back to a titleCase of
+// the slug's value-suffix (the part after the first ':').
+function pillDisplayValue(t){
+  const dn = (t && t.display_name) || '';
+  const i = dn.indexOf(':');
+  if(i >= 0) return dn.slice(i + 1).trim();
+  if(dn) return dn;
+  const sl = (t && t.slug) || '';
+  const tail = sl.includes(':') ? sl.split(':').pop() : sl;
+  return titleCase(tail || '');
+}
+
 function pillHtml(t){
-  // v0.6 Item 8d follow-up C4: dropped the "proposed" visual flag and
-  // tooltip suffix. Proposed status no longer exists as a concept; the
-  // is_proposed bit on legacy rows is ignored at render time.
+  // v0.6 Item 8d C4: dropped the "proposed" visual flag and tooltip suffix.
+  // pill-redesign 2026-05-24 §6/§7: emit collapsed class names —
+  //   .pill.on       — active
+  //   .pill.neutral  — was-active-this-session, toggled off
+  //   .pill.exclude  — future tri-state (no user trigger v1)
+  //   (no class)     — never applied (default styling)
   const st = CURRENT_PILL_STATES[t.slug];
   let cls = 'pill';
-  if(st === 'on_confident') cls += ' on-conf';
-  else if(st === 'on_uncertain') cls += ' on-unc';
-  else if(st === 'off_suspected') cls += ' off-sus';
-  else if(st === 'off_maybe') cls += ' off-may';
-  else cls += ' off-may';
+  if(st === 'on') cls += ' on';
+  else if(st === 'neutral') cls += ' neutral';
+  else if(st === 'exclude') cls += ' exclude';
   const title = `${t.slug}${t.is_exclusive?' (exclusive)':''}`;
-  return `<span class="${cls}" onclick="togglePill('${esc(t.slug)}')" title="${esc(title)}">${esc(t.display_name)}<span class="cnt">${t.usage_count||0}</span></span>`;
+  // pill-redesign 2026-05-24 §3+§8: stopPropagation prevents summary-
+   // header pill clicks from toggling the parent <details> open/closed.
+  return `<span class="${cls}" onclick="event.stopPropagation();togglePill('${esc(t.slug)}')" title="${esc(title)}">${esc(pillDisplayValue(t))}<span class="cnt">${t.usage_count||0}</span></span>`;
 }
 
 function togglePill(slug){
+  // pill-redesign 2026-05-24 §1+§2+§7: click changes visual state only.
+  // Never delete from CURRENT_PILL_STATES mid-session — that would vanish
+  // the pill from APPLIED, which is the failure mode this redesign closes.
+  OPERATOR_TOUCHED_SLUGS.add(slug);
   const st = CURRENT_PILL_STATES[slug];
-  if(st === 'on_confident' || st === 'on_uncertain'){
-    // Turn off — drop entirely (operator explicitly clicked off).
-    delete CURRENT_PILL_STATES[slug];
+  if(st === 'on'){
+    // Active → muted-but-visible. Stays in APPLIED (in 'neutral' visual)
+    // and in its native category (also 'neutral') until next artifact open.
+    CURRENT_PILL_STATES[slug] = 'neutral';
+  } else if(st === 'exclude'){
+    // Future tri-state plumb: exclude → neutral on click. Not user-reachable
+    // in v1, but the branch lets a future control set 'exclude' explicitly
+    // and have the next click neutralize it consistently.
+    CURRENT_PILL_STATES[slug] = 'neutral';
   } else {
-    // off_suspected / off_maybe / unset → operator override to on_confident.
+    // 'neutral' or absent → activate. addAppliedTag handles exclusive-cat.
     addAppliedTag(slug);
     return;
   }
