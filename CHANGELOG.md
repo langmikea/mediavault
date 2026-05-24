@@ -1,5 +1,119 @@
 # MediaVault changelog
 
+## v0.5.5 — 2026-05-24
+
+schema(vocab): collapse `platform:` namespace into `source:`; retire
+`platform` (re-retired). One-shot reconciliation per the YT acquisition
+follow-on v1B session
+(`Hunter Root/_cowork/YT_FOLLOWON_V1B_RUN_REPORT-*.md`).
+
+This is a partial reversal of v0.5.4's Option-A revival, scoped to the
+single namespace that had a clean live equivalent. The YT vocabulary
+alignment brief's §3 (Option B mapping) already flagged
+`platform:youtube → source:youtube` as the only **Clean** of the five
+mappings — Option A was chosen because the OTHER four (scope, author,
+content_kind, artifact_kind) had no clean live home, not because the
+`platform:` mapping itself was contentious. Operator framing on
+2026-05-24 (paraphrased): *"Why is YT a Platform, and TikTok et al are
+Sources? They're doing the same job."*
+
+The other four revived namespaces (`scope`, `author`, `content_kind`,
+`artifact_kind`) **remain revived**. Option A still stands for them.
+
+DB changes (atomic transaction; BEGIN IMMEDIATE / post-verify / COMMIT):
+
+  - `artifacts.tags` JSON arrays: 93 rows rewritten — every
+    `platform:youtube` instance replaced with `source:youtube`
+    (set-deduped, sorted; `updated_at` refreshed).
+  - `tags` dictionary: row `platform:youtube` (usage_count=93) deleted;
+    new row `source:youtube` (display_name='Source:Youtube',
+    usage_count=93) inserted. No prior `source:youtube` row existed.
+  - `vocabulary.platform.retired_at` set to `2026-05-24T15:04:30.000Z`.
+
+Reconciliation script: `Hunter Root/_cowork/mv_vocab_reconcile_v1B.py`
+(one-shot; idempotent re-runs are safe — they detect already-reconciled
+state and exit clean). Pre-write backup at
+`core/backups/mediavault_pre-vocab-reconcile-v1B-20260524T150430Z.sqlite`.
+
+Acquisition-side tooling (HR repo, same session): `yt_archive_capture.py`
+now emits `source:youtube` instead of `platform:youtube`, and also adds
+`type:video` to the parent's static tag set (Mike's Problem B — the
+`type:` namespace at tier 2 is the canonical "this is a video" tag and
+was being skipped while only `content_kind:variant` was emitted).
+Album-name tag fidelity also fixed (album: tag now uses the SPINE
+display title, e.g. `album:they_finally_cracked_me`, matching how
+`song:` already used full track titles).
+
+The reconciliation does not touch the other 11 active vocabulary
+namespaces. Reversibility: the same script run in inverse (manual SQL —
+`UPDATE vocabulary SET retired_at=NULL WHERE namespace='platform'` and
+re-rewriting the tag arrays the other way) would restore. Not currently
+scripted because the operator has the inverse from v0.5.4.
+
+## v0.5.4 — 2026-05-23
+
+schema(vocab): revive five tier-3 namespaces previously retired
+2026-05-19, per the YT/MV vocabulary alignment decision (Option A) in
+`weird-baby-museum/docs/YT_VOCABULARY_ALIGNMENT-20260523T171458Z.md`
+at museum HEAD `5ad4a34`.
+
+The 2026-05-19T01:06:41Z retirement (v0.5.2-era cleanup) had set
+`retired_at` on `platform`, `scope`, `author`, `content_kind`, and
+`artifact_kind` — all tier-3, the "specialized / proposed" tier. That
+retirement was contemporaneous with the broader Phase 2.5 column
+demotion (v0.5.3) and pre-dated the YT acquisition layer's needs
+becoming concrete. The HR acquisition scoping brief
+(`weird-baby-museum/docs/HR_ACQUISITION_SCOPING_BRIEF-20260523-154141.md`
+§1.4, §4.1) surfaced the resulting drift between MV's vocabulary
+registry and `tools/youtube-ingest-schema.md` v1.1 (museum repo), which
+specifies these five namespaces verbatim in its per-artifact pill
+matrix. Both contract documents had diverged silently — POSTs continued
+to validate against §3.1 namespace:value grammar (the 3 already-ingested
+2026-05-18 YT artifacts demonstrate this) but the registry no longer
+listed the namespaces as blessed.
+
+Five `UPDATE vocabulary SET retired_at = NULL` per §6.2 of the
+alignment brief. Sort orders and display names preserved (already
+present in the rows; the original retirement only touched `retired_at`).
+The post-revive tier-3 set: `unsorted=1 (retired)`, `author=2`,
+`platform=3`, `scope=4`, `artifact_kind=5`, `content_kind=6`. The gap
+at sort=1 left by `unsorted` remaining retired is harmless and accepted
+per brief §6.3 (option b). The 12 existing tag instances across the
+3 May-18 YT artifacts (platform/scope/author=3 each, artifact_kind=2,
+content_kind=1) remain unchanged.
+
+No schema-document edits, no acquisition-tooling edits — Option A's
+trade-off design. The decision is reversible: the same UPDATE with a
+new timestamp re-retires all five if the cleanup direction reasserts.
+
+Backup discipline: pre-write backup at
+`core/backups/bak_pre_vocab_revival_20260523T184027Z.sqlite` (SHA-256
+`3410342d24bdf998d287d6889e0ed46d48da9ca2212e5ff7c82badc7b8636e96`,
+byte-identical to the pre-write DB). Post-write `PRAGMA
+integrity_check` passes. DB write executed via the standard
+sandboxed-write pattern (M1 §7.2): working copy in `/tmp/`,
+transactional UPDATE there with `BEGIN IMMEDIATE` + in-txn pre-flight
+count gate + rowcount gate + in-txn post-verify gate, then byte-swap
+back to live path. Live-DB SHA-256 post-swap
+`eff1ee634576167e569abbdd4f5329950ecf2a5a00a44121a2399671a99bb047`;
+size unchanged at 1,953,792 bytes.
+
+Unblocks the HR acquisition brief's §6.4 first work item: "YT bulk
+channel-walk acquisition v1." The five revived namespaces are also the
+template for future non-YT acquisition (IG / TT / FB / web) — they
+accept additional values without further vocabulary edits.
+
+Out of scope, per brief §7: the sort-order renumber at tier-3 (§6.3
+option a); the `exhibit:` and `unsorted:` retirement reviews (their
+own coherence questions); the `era:rwth` missing-vocabulary-row; the
+`credit:` namespace approval from HR brief §9.3 (separate Ops
+prerequisite). Naming note: this entry uses the backup-filename
+pattern `core/backups/bak_pre_<purpose>_<UTCstamp>.sqlite` (recent
+Phase B/C convention) rather than the brief §6.1 alternative form
+`core/mediavault.sqlite.bak_pre-yt-vocab-revive-<utcstamp>.sqlite` —
+file content is identical, only the path differs. Run report:
+`_cowork/VOCAB_REVIVAL_RUN_REPORT-20260523T184027Z.md`.
+
 ## v0.5.3 — 2026-05-20
 
 schema(phase-2.5): drop four registry-era columns from `tags`, promote
@@ -200,61 +314,4 @@ column addition that unblocks the museum-side export script.
 
 ## v0.5.1 — 2026-05-08 (continued)
 
-docs: git-init closure report from session 2026-05-08 absorbed into
-`_cowork/MV_GIT_INIT_CLOSURE_2026-05-08.md` (was a transient session
-output; now under version control).
-
-## v0.5.1 — 2026-05-08
-
-api: allow `local_asset_path` null when `storage_mode` is `url_only`.
-
-Driven by the YouTube-ingest design (see
-`_cowork/YT_INGEST_FROM_MUSEUM.md`). YT-ingest manifests register three
-or four artifacts per video; three of them — the `youtube_video_page`
-parent, the `youtube_transcript` child, and the `youtube_channel_card` —
-have `storage_mode: url_only` and no local bytes to point at. The
-pre-patch `/api/artifact-register` rejected those because
-`local_asset_path` was unconditionally required.
-
-Patch landed by `_cowork/v07_artifact_register_url_only_patch.py`. Three
-contiguous edits in `core/imgserver_extensions.py`:
-
-  1. Docstring rewritten so `local_asset_path` is documented as REQUIRED
-     when `storage_mode` is `vaulted` or `referenced`, OPTIONAL when
-     `storage_mode == 'url_only'`. `media_type` becomes REQUIRED in the
-     body when `local_asset_path` is omitted (no file to infer from).
-
-  2. Validation block updated: skip the file-exists / under-`ASSET_ROOTS`
-     check when `local_asset_path` is null/missing AND
-     `storage_mode == 'url_only'`. When a path IS provided in the
-     url_only case it is still validated normally — operators may
-     legitimately reference an existing snapshot from a url_only
-     artifact and the safety check stands.
-
-  3. INSERT-VALUES line: bind `local_asset_path` as nullable instead of
-     coercing through the existing path-normalize helper.
-
-Spec sync landed by `_cowork/v07_spec_url_only_doc_patch.py`:
-`SPEC.md §3 Storage Mode` gained the API contract paragraph that
-formalizes the conditional-required rule.
-
-Test added: `tests/test_artifact_register_url_only.py` covers the
-url_only-with-no-path success path, the url_only-with-valid-path
-success path, and the vaulted-with-no-path failure path. Pre-existing
-`_cowork/v06_tag_create_test.py` failures are unrelated and remain on
-the v0.7 punchlist.
-
-This patch shipped without any git history. This CHANGELOG entry is the
-retroactive record. From this point forward every code/schema/doc change
-gets a real commit; runtime state changes (DB writes, vault ingests,
-intake queue churn) do not.
-
-## v0.5 — 2026-04-19
-
-Refactor shipped. See `MEDIAVAULT_V05_DESIGN.md` for the full rationale,
-`_cowork/PHASE_SUMMARY_v05.md` for the per-phase build log, and
-`STATE.md` for the headline change list.
-
-Predates this repo. No commit history exists for the v0.5 build
-itself — the initial commit on this branch absorbs the v0.5-shipped
-state as the baseline.
+docs: git-init closure report from session 2026-05-08 a
