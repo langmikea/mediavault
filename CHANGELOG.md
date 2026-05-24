@@ -1,5 +1,64 @@
 # MediaVault changelog
 
+## v0.5.6 — 2026-05-24
+
+schema(vocab): register `bands:` as tier-1 namespace (sort_order=6,
+display_name="Bands"); migrate all 81 `people:hunter_root` instances
+to `bands:hunter_root`; ensure bands:hunter_root present on every
+artifact in the broader HR-exhibit cluster (93 scope:hr artifacts).
+Per audit §9.4 (locked 2026-05-24) — Bands gets its own tier-1
+namespace; Hunter Root migrates from people: semantics to bands:
+semantics. R3 validator's
+`countInCategory('people')==0 && countInCategory('bands')==0`
+disjunct in mediavault.html is correct as-written for the
+post-migration dual-category world (per V1B Tagging-S1 §2.1
+reconciliation).
+
+DB changes (single BEGIN IMMEDIATE / post-verify / COMMIT, via
+`Hunter Root/_cowork/mv_bands_migration_20260524T210249Z.py`):
+
+  - `vocabulary`: INSERT row (namespace='bands', display_name='Bands',
+    tier=1, sort_order=6, retired_at=NULL). Tier-1 sort sequence is
+    now: year=1, album=2, song=3, venue=4, people=5, bands=6.
+  - `artifacts.tags` JSON arrays: 173 rows rewritten — 80 REPLACE_ONLY
+    (people:hr → bands:hr, no scope on those older FB / ReverbNation
+    captures), 1 REPLACE_BOTH (`MV-20260523-089` "Straitlaced" — has
+    both), 92 ADD_ONLY (scope-present, adds bands:hr). Tag arrays
+    sorted, deduped; `updated_at` refreshed.
+  - `tags` dictionary: row `people:hunter_root` deleted (usage_count
+    81 → 0; mirrors v0.5.5 platform:youtube delete-on-zero pattern).
+    Row `bands:hunter_root` inserted (display_name='Bands:Hunter Root',
+    usage_count=173, created_at populated).
+
+Pre-write backups:
+
+  - `core/backups/bak_pre_bands_migration_20260524T205823Z.sqlite`
+    (pre-§1: pristine pre-everything snapshot).
+  - `core/backups/bak_pre_bands_backfill_20260524T214419Z.sqlite`
+    (pre-§3: post-vocab-INSERT, pre-tag-rewrite snapshot).
+
+Acquisition-side tooling (HR repo, same session, separate commit):
+`tools/yt_archive_capture.py` adds `BANDS_SLUG="bands:hunter_root"`
+to `COMMON_STATIC_TAGS` — every parent + child emitted by future
+captures carries bands:hunter_root automatically (alongside the
+existing scope/source/author tags). No `people:hunter_root` emission
+existed post-V1A/V1B; the migration's REPLACE path applied only to
+older Facebook / ReverbNation captures from before the V1A cleanup.
+
+Museum-side: `docs/TAGGING_SYSTEM_AUDIT-20260524T155635Z.md` §6.1 T1
+gets a supersession note (§9.4 reverses §6.1 T1's "drop bands half of
+R3" wording; the R3 disjunct is correct as-written). Separate Museum
+commit.
+
+Reversibility: the matching pre-§3 backup restores prior state.
+Re-running `_cowork/mv_bands_migration_20260524T210249Z.py` against
+the current DB is idempotent — its pre-flight detects POST-MIGRATION
+state and exits clean rather than re-applying.
+
+T7 (era / format / release_type vocab registration) is the next §6.4
+sequencing item. The internal §9.5 × §9.8 tension over era's
+sort_order=6 vs bands at sort_order=6 surfaces there.
+
 ## v0.5.5 — 2026-05-24
 
 schema(vocab): collapse `platform:` namespace into `source:`; retire
