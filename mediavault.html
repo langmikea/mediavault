@@ -743,6 +743,19 @@ let CURRENT_PILL_STATES = {};
 // clicked this artifact session. Save is blocked until at least one entry
 // exists — AI proposals alone don't approve themselves.
 let OPERATOR_TOUCHED_SLUGS = new Set();
+// inbox-fixes 2026-05-24 Fix 2+Fix 3: per-artifact snapshots captured at
+// artifact-open time and reused across renders within the same session.
+//   CATEGORY_OPEN_SNAPSHOT: cat -> bool. Open/closed state derived from
+//     onCount on first render; subsequent renders use this snapshot so
+//     pill clicks don't recollapse a group the operator is mid-edit on.
+//     Manual <summary> chevron clicks update the snapshot via a toggle
+//     listener attached after host.innerHTML.
+//   PILL_ORDER_SNAPSHOT: cat -> [slug,...]. Sorted by stateRank on first
+//     render; subsequent renders sort by snapshot-index so deselecting a
+//     pill dims it in place rather than reflowing the group.
+// Both reset in clearInboxRight() and populateInboxFields() (artifact-open).
+let CATEGORY_OPEN_SNAPSHOT = {};
+let PILL_ORDER_SNAPSHOT = {};
 let CURRENT_WARNINGS = []; // warning slugs from attention rules
 
 // v0.5 categories (mirror core/attention_rules.py constants).
@@ -918,6 +931,8 @@ function inboxSelectItem(queueId){
 function clearInboxRight(){
   CURRENT_PILL_STATES = {};
   OPERATOR_TOUCHED_SLUGS = new Set();
+  CATEGORY_OPEN_SNAPSHOT = {};
+  PILL_ORDER_SNAPSHOT = {};
   CURRENT_WARNINGS = [];
   const pillWall = document.getElementById('pillWall');
   if(pillWall) pillWall.innerHTML = '';
@@ -930,6 +945,21 @@ function clearInboxRight(){
   }
   // Drop field-warning glow
   document.querySelectorAll('.fieldGroup.warn').forEach(el => { el.classList.remove('warn'); el.title = ''; });
+}
+// inbox-fixes 2026-05-24 Fix 4: look up an artifact's sibling thumbnail.
+// YT cluster-roots (media_type='link', storage_mode='url_only') don't have
+// their own local asset, but yt-acquisition emits a sibling photo child
+// tagged artifact_kind:thumbnail with the cached thumb.jpg path. Returns
+// the child artifact or null. Cheap linear scan over ARTIFACTS; called
+// once per inbox viewer render, which is once per PREV/NEXT/select click.
+function findThumbnailSibling(rootArtifactId){
+  if(!rootArtifactId || !Array.isArray(ARTIFACTS)) return null;
+  return ARTIFACTS.find(a =>
+    a.parent_artifact_id === rootArtifactId &&
+    Array.isArray(a._tags) &&
+    a._tags.includes('artifact_kind:thumbnail') &&
+    a.local_asset_path
+  ) || null;
 }
 function renderInboxViewer(q){
   const v = document.getElementById('inboxViewer');
@@ -945,7 +975,21 @@ function renderInboxViewer(q){
     };
     v.appendChild(img);
   } else if(q.source_url){
-    v.innerHTML = `<div class="noMedia">URL only<br><a href="${esc(q.source_url)}" target="_blank" style="color:var(--gold)">${esc(q.source_url)}</a></div>`;
+    // inbox-fixes 2026-05-24 Fix 4: for requeued URL-only artifacts (YT
+    // cluster-roots being re-triaged), look up the sibling thumbnail and
+    // render it in the viewer so the operator can identify what they're
+    // triaging without clicking out to the URL. Falls back to the prior
+    // 'URL only' placeholder when no sibling exists (older FB / ReverbNation
+    // cluster-roots that predate the yt-acquisition thumbnail pipeline).
+    const sib = findThumbnailSibling(q.artifact_id);
+    if(sib && sib.local_asset_path){
+      v.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;width:100%;height:100%;padding:20px;box-sizing:border-box">`
+        + `<img src="/image-raw?path=${encodeURIComponent(sib.local_asset_path)}" data-asset-path="${esc(sib.local_asset_path)}" style="max-width:100%;max-height:calc(100% - 40px);object-fit:contain" onerror="this.style.display='none'">`
+        + `<a href="${esc(q.source_url)}" target="_blank" style="color:var(--gold);font:11px var(--mono);text-decoration:none;border:1px solid var(--gold);padding:4px 10px;border-radius:3px">&#8599; OPEN ${esc(q.source_url)}</a>`
+        + `</div>`;
+    } else {
+      v.innerHTML = `<div class="noMedia">URL only<br><a href="${esc(q.source_url)}" target="_blank" style="color:var(--gold)">${esc(q.source_url)}</a></div>`;
+    }
   } else {
     v.innerHTML = `<div class="noMedia">No media for queue item #${q.queue_id}</div>`;
   }
@@ -986,6 +1030,10 @@ function populateInboxFields(q){
   // single artifact session — see §2 "on next artifact open, gone from APPLIED").
   CURRENT_PILL_STATES = {};
   OPERATOR_TOUCHED_SLUGS = new Set();
+  // inbox-fixes 2026-05-24 Fix 2+Fix 3: artifact-open snapshot reset.
+  // Next renderPillWall() will rebuild both snapshots from fresh state.
+  CATEGORY_OPEN_SNAPSHOT = {};
+  PILL_ORDER_SNAPSHOT = {};
   if(art && Array.isArray(art._tags)){
     for(const slug of art._tags){
       const s = slugify(slug);
@@ -1084,21 +1132,14 @@ async function inboxSave(release){
   }
   // v0.5: derive applied tags from pill_states (on_confident | on_uncertain count as applied).
   syncAppliedFromStates();
-  // v0.6 Item 8d C5 / pill-redesign 2026-05-24 §7: gate save-to-vault.
-  // Decomposed into two checks:
-  //   (1) at least one pill must currently be 'on' (anything was applied)
-  //   (2) operator must have physically clicked at least one pill this
-  //       session (AI proposals alone don't approve themselves — discipline
-  //       preserved across the state-model collapse).
-  const anyOn = Object.values(CURRENT_PILL_STATES).some(s => s === 'on');
-  if(!anyOn){
-    toast('Save blocked: needs at least 1 applied tag','err');
-    return;
-  }
-  if(OPERATOR_TOUCHED_SLUGS.size === 0){
-    toast('Save blocked: confirm tags — click at least one pill','err');
-    return;
-  }
+  // inbox-fixes 2026-05-24 Fix 1: validator simplified per operator decision.
+  // Previous gate required (a) >=1 'on' pill AND (b) OPERATOR_TOUCHED_SLUGS
+  // non-empty (the "click at least one pill" discipline). Both removed:
+  // opening + clicking Save is sufficient confirmation. The R1-R5 missing-
+  // category check below still blocks structurally-invalid artifacts.
+  // OPERATOR_TOUCHED_SLUGS is retained as dead-code state (still populated
+  // by addAppliedTag / removeAppliedTag / togglePill) in case a future
+  // feature wants the dirty-form signal; no current consumer.
   const _warn = computeWarnings();
   const _missingCat = _warn.filter(w => w.startsWith('missing_category:')).map(w => w.split(':')[1]);
   if(_missingCat.length){
@@ -1371,17 +1412,40 @@ function renderPillWall(){
       if(st === 'exclude') return 2;
       return 3;
     };
-    pills.sort((a,b) => stateRank(a.slug) - stateRank(b.slug)
-      || (b.usage_count||0) - (a.usage_count||0)
-      || a.slug.localeCompare(b.slug));
+    // inbox-fixes 2026-05-24 Fix 2: pill order snapshotted at artifact-open.
+    // First render in this session: run the stateRank sort and capture the
+    // slug order. Subsequent renders: stable-sort by snapshot index so a
+    // deselected pill dims in place rather than triggering layout reflow.
+    // Pills created mid-session (not in snapshot) sort to the end.
+    if(!PILL_ORDER_SNAPSHOT[cat]){
+      pills.sort((a,b) => stateRank(a.slug) - stateRank(b.slug)
+        || (b.usage_count||0) - (a.usage_count||0)
+        || a.slug.localeCompare(b.slug));
+      PILL_ORDER_SNAPSHOT[cat] = pills.map(t => t.slug);
+    } else {
+      const orderMap = new Map(PILL_ORDER_SNAPSHOT[cat].map((slug, i) => [slug, i]));
+      pills.sort((a,b) => {
+        const ai = orderMap.has(a.slug) ? orderMap.get(a.slug) : 9999;
+        const bi = orderMap.has(b.slug) ? orderMap.get(b.slug) : 9999;
+        return ai - bi || a.slug.localeCompare(b.slug);
+      });
+    }
     // pill-redesign 2026-05-24 §3+§8: derive both the list of 'on' pills
-    // (for inline summary-header render) and the count (for the openAttr
-    // gate). Only 'on' counts as "answered" — a group whose only pills are
-    // 'neutral' (all toggled off this session) re-opens.
+    // (for inline summary-header render) and the count. Only 'on' counts
+    // as "answered" — a group whose only pills are 'neutral' (all
+    // toggled off this session) is treated as no-longer-answered.
     const onPills = pills.filter(t => CURRENT_PILL_STATES[t.slug] === 'on');
     const onCount = onPills.length;
     const catWarn = catWarnings[cat] ? `<span class="catWarn" title="${esc(catWarnings[cat])}">&#9888;</span>` : '';
-    const openAttr = onCount === 0 ? ' open' : '';
+    // inbox-fixes 2026-05-24 Fix 3: collapse state snapshotted at artifact-open.
+    // First render in this session: derive open/closed from onCount per T5
+    // (open if no 'on' pills). Subsequent renders: read snapshot, so a pill
+    // click doesn't recollapse a group the operator is mid-edit on. Manual
+    // chevron clicks update the snapshot (toggle listener attached below).
+    if(!(cat in CATEGORY_OPEN_SNAPSHOT)){
+      CATEGORY_OPEN_SNAPSHOT[cat] = (onCount === 0);
+    }
+    const openAttr = CATEGORY_OPEN_SNAPSHOT[cat] ? ' open' : '';
     // pill-redesign 2026-05-24 §3+§8: when collapsed (onCount > 0), surface
     // the selected pills inline in the summary header so the operator can
     // see the answer without expanding the group. The pills inherit the
@@ -1390,11 +1454,20 @@ function renderPillWall(){
     const summaryValuesHtml = onCount > 0
       ? `<span class="summaryValues">${onPills.map(t => pillHtml(t)).join('')}</span>`
       : '';
-    return `<details class="pillCategory"${openAttr}>
+    return `<details class="pillCategory" data-cat="${esc(cat)}"${openAttr}>
       <summary><span>${esc(label)}${catWarn}</span>${summaryValuesHtml}<span class="summaryCount">${onCount}/${pills.length}</span></summary>
       <div class="pills">${pills.map(t => pillHtml(t)).join('')}</div>
     </details>`;
   }).join('');
+  // inbox-fixes 2026-05-24 Fix 3: wire toggle listeners so manual chevron
+  // clicks update CATEGORY_OPEN_SNAPSHOT. Without this, the next render
+  // (after any pill click) would restore the snapshot's prior state and
+  // overwrite the user's manual collapse/expand.
+  host.querySelectorAll('details.pillCategory[data-cat]').forEach(d => {
+    const cat = d.getAttribute('data-cat');
+    if(!cat) return;
+    d.addEventListener('toggle', () => { CATEGORY_OPEN_SNAPSHOT[cat] = d.open; });
+  });
 
   // Field-level warnings: glow the relevant control
   document.querySelectorAll('.fieldGroup.warn').forEach(el => el.classList.remove('warn'));
