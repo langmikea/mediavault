@@ -1,5 +1,52 @@
 # MediaVault changelog
 
+## v0.5.7 — 2026-05-25
+
+vocab(exhibit): backfill `exhibit:hunter_root` across all 178 artifacts
+(Scope C per operator decision 2026-05-25). 21 already carried the tag
+(no-op for those); 157 had it added. `tags` registry reconciled:
+exhibit:hunter_root usage_count 19 → 178 (pre-state had a 2-row
+registry drift vs actual usage; the post-write count matches reality).
+
+DB changes (single BEGIN IMMEDIATE / post-verify / COMMIT, via
+`_cowork/mv_exhibit_backfill_20260525T103322Z.py`):
+
+  - `artifacts.tags` JSON arrays: 157 rows rewritten — each gets
+    `exhibit:hunter_root` appended, then set-deduped and re-sorted
+    alphabetically (matches the existing convention; preserves the
+    v0.5.6 pattern of sorted, deduped tag arrays). `updated_at`
+    refreshed on each rewritten row.
+  - `tags` dictionary: row `exhibit:hunter_root` (display_name=
+    'Exhibit:Hunter Root', pre-state usage_count=19) updated to
+    usage_count=178. No INSERT — the row already existed from the
+    Phase v5-6 seed (v0.5.2, 2026-05-11).
+
+Pre-write backup: `core/backups/bak_pre_exhibit_backfill_20260525T103322Z.sqlite`
+(1,953,792 bytes; PRAGMA integrity_check=ok on post-write file).
+
+Unblocks `tools/export-artifacts.mjs` (museum repo) which filters by
+`exhibit:hunter_root`. Before this backfill the 34 today-released
+artifacts that lacked the exhibit tag would not appear in the per-
+exhibit JSON. After the backfill the museum's regenerated JSON carries
+54 artifacts (55 released minus 1 cluster-sibling excluded by the
+script's `parent_artifact_id IS NULL` filter — MV-HR-20260416-014, an
+audio child of MV-HR-20260416-011, whose parent relationship was set
+on 2026-05-24T21:44:20Z).
+
+Reversibility: the pre-write backup restores prior state. Re-running
+`_cowork/mv_exhibit_backfill_20260525T103322Z.py` against the current
+DB detects the post-backfill state (0 artifacts lack the tag) at the
+pre-flight count assertion and aborts cleanly without re-applying.
+
+Future automation: T8 (audit §6.4) — HR acquisition tooling will
+auto-emit `exhibit:hunter_root` on every captured artifact alongside
+the existing `bands:`/`scope:`/`source:` tags. This backfill is the
+one-time catch-up for the historical artifacts captured before T8
+lands.
+
+Museum-side companion commit: `data: regen hunter_root.json with 54
+released artifacts` (museum repo).
+
 ## v0.5.6 — 2026-05-24
 
 schema(vocab): register `bands:` as tier-1 namespace (sort_order=6,
