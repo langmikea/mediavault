@@ -1,5 +1,62 @@
 # MediaVault changelog
 
+## v0.5.8 — 2026-05-25
+
+vocab: register three previously-unregistered namespaces per audit
+§6.1 T7 + §9.8 operator decisions (locked 2026-05-24). Single
+BEGIN IMMEDIATE / 3 INSERTs / post-verify / COMMIT against
+`vocabulary` via `_cowork/mv_register_unregistered_v1.py`.
+
+Vocabulary INSERTs (final post-state in parens):
+
+  - `era`          tier=1, sort_order=7  (after bands which took
+                                          sort_order=6 in v0.5.6;
+                                          §9.5 × §9.8 reconciliation
+                                          shifts era to 7), display
+                                          name "Era".
+  - `format`       tier=2, sort_order=3  (after source=1, type=2),
+                                          display name "Format".
+  - `release_type` tier=2, sort_order=4  (after format=3), display
+                                          name "Release Type".
+
+Post-state tier ordering verified end-to-end on host DB:
+
+  tier-1: year=1, album=2, song=3, venue=4, people=5, bands=6, era=7
+  tier-2: source=1, type=2, format=3, release_type=4
+
+Pre-write backup:
+`core/backups/bak_pre_t7_vocab_20260525T180605Z.sqlite`
+(1,953,792 bytes; pre-write sha256 matched live DB; pre-write
+PRAGMA integrity_check=ok; post-write integrity_check=ok).
+
+Sandbox-write path (deviation from v0.5.7 script template, banked
+as a CLAUDE.md follow-up): COMMIT against the virtiofs-mounted DB
+threw `disk I/O error` on the first attempt — the M1 §7.2 symptom.
+Recovered cleanly: byte-identical sha256 confirmed no pages had
+been rewritten, the orphan rollback journal was removed, and the
+write was re-run via the v0.5.7 pattern (copy host DB to a /tmp
+work copy, transact there, write back). The atomic rename step
+needed a copy-then-`os.replace`-within-host-fs variant because the
+sandbox `/tmp` is tmpfs (different filesystem from the virtiofs
+mount), so the v0.5.7 script's direct `os.replace(WORK_DB,
+HOST_DB)` got `EXDEV`. The final swap used `shutil.copy2` to
+`<host>.t7_tmp` followed by `os.replace` within the host
+filesystem — same atomicity guarantee, cross-device-safe.
+
+Unblocks T3 (tag-group ordering by tier + sort_order in MV's
+`/api/tags` and the Museum's `buildDimensions`). Tag values
+populate organically as artifacts emit them; no backfill needed.
+The `vocabulary` table now declares era, format, release_type as
+known namespaces with stable tier/sort_order — downstream
+consumers can rely on the registry instead of the
+`TIER_BY_NAMESPACE` fallback heuristic.
+
+Reversibility: the pre-write backup restores prior state. Re-
+running `_cowork/mv_register_unregistered_v1.py` against the
+current DB detects the post-write state at the pre-flight count
+assertion (era/format/release_type all present) and aborts
+cleanly without re-applying.
+
 ## v0.5.7 — 2026-05-25
 
 vocab(exhibit): backfill `exhibit:hunter_root` across all 178 artifacts
