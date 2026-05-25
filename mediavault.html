@@ -758,12 +758,43 @@ let CATEGORY_OPEN_SNAPSHOT = {};
 let PILL_ORDER_SNAPSHOT = {};
 let CURRENT_WARNINGS = []; // warning slugs from attention rules
 
-// v0.5 categories (mirror core/attention_rules.py constants).
-// v0.6 Item 8c: 'scope' category removed per Mike — he prefers to use plain
-// topical tags for scope information. Existing scope:* tags continue to work
-// (they just render in the 'topic' category via the fallback); no data
-// migration needed.
-const CATEGORY_ORDER = ['people', 'bands', 'places', 'content_kind', 'topic', 'platform', 'rarity'];
+// T3 (audit §6.1 + §LOCKED_DESIGN, 2026-05-25): CATEGORY_ORDER retired.
+// Pill-wall sidebar group ordering is now dynamic, sourced per-tag from
+// /api/tags (which joins to the §5.4 `vocabulary` registry). The helpers
+// below provide the comparator + filter primitives used by renderPillWall,
+// the applied-strip, and the propose-pill autocomplete.
+//
+// Option α (locked 2026-05-25): namespaces not present in vocabulary fall
+// to tier=99 / sort_order=99 — they sort to the bottom of the sidebar.
+// Q1 hide-retired (locked 2026-05-25): namespaces with retired_at set in
+// vocabulary are filtered out of the pill UI entirely (their tags still
+// exist as data; the museum applies the same rule via hr_dimensions.js).
+//
+// Pre-T3 reference (kept as a comment for archeology):
+// const CATEGORY_ORDER = ['people', 'bands', 'places', 'content_kind', 'topic', 'platform', 'rarity'];
+let NAMESPACE_META = Object.create(null);
+
+function nsTier(ns)      { const m = NAMESPACE_META[ns]; return (m && typeof m.tier === 'number') ? m.tier : 99; }
+function nsSortOrder(ns) { const m = NAMESPACE_META[ns]; return (m && typeof m.sort_order === 'number') ? m.sort_order : 99; }
+function nsRetired(ns)   { return !!(NAMESPACE_META[ns] && NAMESPACE_META[ns].retired_at); }
+function nsCompare(a, b) {
+  const ta = nsTier(a), tb = nsTier(b);
+  if (ta !== tb) return ta - tb;
+  const sa = nsSortOrder(a), sb = nsSortOrder(b);
+  if (sa !== sb) return sa - sb;
+  return a.localeCompare(b);
+}
+function nsActiveOrdered() {
+  return Object.keys(NAMESPACE_META).filter(ns => !nsRetired(ns)).sort(nsCompare);
+}
+function orderCats(byCat) {
+  // Active vocab namespaces in canonical order, retired filtered out,
+  // __uncategorized__ pinned last.
+  const cats = Object.keys(byCat).filter(c => c !== '__uncategorized__' && !nsRetired(c));
+  cats.sort(nsCompare);
+  if (byCat['__uncategorized__']) cats.push('__uncategorized__');
+  return cats;
+}
 const SOCIAL_PLATFORMS = new Set(['facebook','instagram','tiktok','reverbnation']);
 const TITLECASE_BIGRAM = /\b[A-Z][a-z]+ [A-Z][a-z]+\b/;
 
@@ -884,7 +915,23 @@ async function loadTags(){
   const r = await api('/api/tags');
   TAG_LIST = r.rows || [];
   TAGS_BY_SLUG = {};
-  TAG_LIST.forEach(t => TAGS_BY_SLUG[t.slug] = t);
+  // T3 (audit §6.1, 2026-05-25): rebuild the per-namespace metadata lookup
+  // from /api/tags' new tier / sort_order / namespace_display_name /
+  // namespace_retired_at fields. First-occurrence of each namespace wins
+  // (all rows in the same namespace carry identical metadata).
+  NAMESPACE_META = Object.create(null);
+  TAG_LIST.forEach(t => {
+    TAGS_BY_SLUG[t.slug] = t;
+    const ns = t.category;
+    if (ns && !NAMESPACE_META[ns]) {
+      NAMESPACE_META[ns] = {
+        tier: t.tier,
+        sort_order: t.sort_order,
+        display_name: t.namespace_display_name,
+        retired_at: t.namespace_retired_at,
+      };
+    }
+  });
   renderTagBrowse();
   // v0.6 Item 8: renderVaultTagBar() removed — the tag-pill filter row above
   // the vault table was dropped per Mike. Search covers the same use cases.
@@ -1331,11 +1378,13 @@ function renderPillWall(){
       byCat[cat].push({slug, display_name: titleCase(slug), category: null, is_proposed: 1, usage_count: 0});
     }
   }
-  // Pin category order per design §4.3, then alphabetical leftovers, then __uncategorized__ last.
-  const known = CATEGORY_ORDER.filter(c => byCat[c]);
-  const rest = Object.keys(byCat).filter(c => !CATEGORY_ORDER.includes(c) && c !== '__uncategorized__').sort();
-  const cats = [...known, ...rest];
-  if(byCat['__uncategorized__']) cats.push('__uncategorized__');
+  // T3 (audit §6.1, 2026-05-25): category order is now dynamic, sourced
+  // from /api/tags' per-tag namespace metadata (tier, sort_order,
+  // namespace_display_name, namespace_retired_at). Retired namespaces are
+  // dropped (Q1 hide-retired locked 2026-05-25). Option α: unregistered
+  // namespaces sort to tier=99 / sort_order=99 (bottom of sidebar).
+  // __uncategorized__ remains last regardless.
+  const cats = orderCats(byCat);
 
   // Category-level warnings map
   const catWarnings = {};
@@ -1365,8 +1414,9 @@ function renderPillWall(){
     .sort((a, b) => (a.category||'').localeCompare(b.category||'') || a.slug.localeCompare(b.slug));
   // pill-redesign 2026-05-24 §5: spreadsheet layout for the APPLIED strip.
   // Group appliedAll by category, render one row per category (category-name
-  // left col, value-pills right col). CATEGORY_ORDER pins are honoured for
-  // the order; uncategorized stays last.
+  // left col, value-pills right col). T3 (2026-05-25): the dynamic
+  // (tier, sort_order, namespace) order is honoured via orderCats();
+  // uncategorized stays last.
   let accumulatedHtml;
   if(appliedAll.length === 0){
     accumulatedHtml = '<div class="pillAccumulated empty"><span class="pillAcc-empty">(nothing applied yet)</span></div>';
@@ -1377,12 +1427,9 @@ function renderPillWall(){
       if(!byCatApplied[cat]) byCatApplied[cat] = [];
       byCatApplied[cat].push(t);
     }
-    const knownCats = CATEGORY_ORDER.filter(c => byCatApplied[c]);
-    const restCats = Object.keys(byCatApplied)
-      .filter(c => !CATEGORY_ORDER.includes(c) && c !== '__uncategorized__')
-      .sort();
-    const orderedCats = [...knownCats, ...restCats];
-    if(byCatApplied['__uncategorized__']) orderedCats.push('__uncategorized__');
+    // T3 (audit §6.1, 2026-05-25): same dynamic ordering as the main pill
+    // wall. Replaces CATEGORY_ORDER-pinned+alphabetical-rest pattern.
+    const orderedCats = orderCats(byCatApplied);
     const rowsHtml = orderedCats.map(cat => {
       const label = cat === '__uncategorized__' ? '(uncategorized)' : cat;
       return '<div class="pillAcc-row">'
@@ -1568,7 +1615,11 @@ function togglePill(slug){
       // the single "+ Create proposed pill" line is replaced by one entry
       // per real category. Clicking any of them creates the tag with that
       // category attached and applies it to the current artifact.
-      for(const cat of CATEGORY_ORDER){
+      // T3 (audit §6.1, 2026-05-25): the propose-as-category list is now
+      // the active vocabulary, ordered (tier, sort_order, namespace).
+      // Retired namespaces are filtered out. Option α: unregistered
+      // namespaces fall to tier=99 (bottom of list).
+      for(const cat of nsActiveOrdered()){
         html += `<div class="sg propose" data-slug="${esc(slug)}" data-propose="1" data-cat="${esc(cat)}">+ Create "${esc(slug)}" as <span style="color:var(--gold2);font-weight:600">${esc(cat)}</span></div>`;
       }
     }
@@ -1631,7 +1682,8 @@ function togglePill(slug){
     const cat  = el.dataset.cat || null;
     if(el.dataset.propose){
       // v0.6 Item 8d follow-up C3: every propose row now carries a
-      // data-cat (one row per CATEGORY_ORDER entry). Pass that category
+      // data-cat. T3 (2026-05-25): the row set is now one per active
+      // vocabulary namespace via nsActiveOrdered(). Pass that category
       // through so the new tag lands in a real bucket, not "uncategorized".
       try{
         await api('/api/tag-create', {slug, display_name: titleCase(slug.split(':').pop()), category: cat, is_proposed: 0});

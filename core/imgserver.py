@@ -251,6 +251,23 @@ def vocab_row_for_slug(slug: str, usage_count: int,
         display_name = f"{ns_display}: {display_name_for(local)}"
     else:
         display_name = display_name_for(slug)
+    # T3 (audit S6.1, 2026-05-25): attach namespace-ordering metadata so
+    # clients can sort tag groups by (tier, sort_order, namespace) without a
+    # second round-trip. Option alpha (operator-locked 2026-05-25):
+    # unregistered namespaces fall to tier=99 / sort_order=99 /
+    # display=<namespace>, which buckets them at the bottom of the sidebar.
+    # `namespace_retired_at` is forwarded so the client can hide pill
+    # groups whose namespace was retired (Q1 locked 2026-05-25).
+    if meta:
+        _tier = meta.get("tier") if meta.get("tier") is not None else 99
+        _sort_order = meta.get("sort_order") if meta.get("sort_order") is not None else 99
+        _ns_display = meta.get("display_name") or ns or ""
+        _retired_at = meta.get("retired_at")
+    else:
+        _tier = 99
+        _sort_order = 99
+        _ns_display = ns or ""
+        _retired_at = None
     return {
         "slug": slug,
         "display_name": display_name,
@@ -259,6 +276,10 @@ def vocab_row_for_slug(slug: str, usage_count: int,
         "is_proposed": 0,
         "usage_count": usage_count or 0,
         "description": None,
+        "tier": _tier,
+        "sort_order": _sort_order,
+        "namespace_display_name": _ns_display,
+        "namespace_retired_at": _retired_at,
     }
 
 
