@@ -67,6 +67,24 @@
       "values": [
         "not-required", "not-requested", "requested", "granted", "denied"
       ]
+    },
+    "kind": {
+      "label": "Kind",
+      "multi": false,
+      "values": [
+        "performance", "release", "announcement", "studio",
+        "candid", "interview", "fan"
+      ],
+      "value_meta": {
+        "performance":  { "label": "Performance" },
+        "release":      { "label": "Music" },
+        "announcement": { "label": "Announcement" },
+        "studio":       { "label": "In the Studio" },
+        "candid":       { "label": "Off Stage" },
+        "interview":    { "label": "(reserved)", "reserved": true },
+        "fan":          { "label": "(reserved)", "reserved": true }
+      },
+      "note": "Single-select governed field. Closed set mirrors the artifacts.kind CHECK constraint in mediavault.sqlite. Column is nullable in DB; ingest enforces leaf-required, containers exempt. 'interview' and 'fan' are reserved: present in the constraint but not yet surfaced in the UI."
     }
   },
   "id_format": {
