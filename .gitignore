@@ -67,3 +67,6 @@ core/backups/
 core/__deltest*
 core/__isotest
 core/__test_sibling
+
+# MediaVault DB backup snapshots — keep on disk as rollback points, never commit
+core/mediavault.sqlite.bak-*
