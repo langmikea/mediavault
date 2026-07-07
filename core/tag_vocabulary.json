@@ -3,7 +3,7 @@
     "version": "2.0",
     "authority": "NON-AUTHORITATIVE REFERENCE. The live DB (core/mediavault.sqlite: vocabulary + tags tables) is the canonical vocabulary head (MV_VOCAB_RECONCILE_PLAN-20260624 F1/F3). No runtime code reads this file; it is a generated snapshot for human reference. Regenerate from the DB after vocabulary changes.",
     "generated": "2026-07-07",
-    "generated_from": "mediavault.sqlite post vocab-reconcile Stages 0-4 (293 artifacts, 210 registry slugs)",
+    "generated_from": "mediavault.sqlite post vocab-reconcile Stages 0-4 + fact-kind rebuild (FACT_KIND_PUV_PILOT-20260707 Stage 2; 293 artifacts, 211 registry slugs)",
     "format": "values are lower_snake_case (underscore canonical, F2); namespaces mirror the vocabulary table (tier/sort/display); values mirror the tags registry (all have live usage > 0 per F7)",
     "retired_namespaces": { "unsorted": "2026-05-19", "platform": "2026-05-24" }
   },
@@ -32,7 +32,7 @@
   "kind_column": {
     "label": "Kind",
     "multi": false,
-    "values": ["performance", "release", "announcement", "studio", "candid", "interview", "fan"],
+    "values": ["performance", "release", "announcement", "studio", "candid", "interview", "fan", "fact"],
     "value_meta": {
       "performance":  { "label": "Performance" },
       "release":      { "label": "Music" },
@@ -40,9 +40,10 @@
       "studio":       { "label": "In the Studio" },
       "candid":       { "label": "Off Stage" },
       "interview":    { "label": "(reserved)", "reserved": true },
-      "fan":          { "label": "(reserved)", "reserved": true }
+      "fan":          { "label": "(reserved)", "reserved": true },
+      "fact":         { "label": "Fact", "note": "PUV surface, not a browse chip; never emitted by ingest; display UI is a separate workstream (PUV_FACT_MODEL_SPEC)" }
     },
-    "note": "The artifacts.kind COLUMN (CHECK constraint), not a tag namespace. Single-select; nullable in DB; ingest enforces leaf-required, containers exempt. `fact` joins this set in the later fact workstream (F10, Stage 7 rebuild) - NOT part of the vocab migration."
+    "note": "The artifacts.kind COLUMN (CHECK constraint), not a tag namespace. Single-select; nullable in DB; ingest enforces leaf-required, containers exempt. `fact` joined the set 2026-07-07 (FACT_KIND_PUV_PILOT-20260707 Stage 2 table rebuild, per F10) - fact artifacts carry PUV facts per PUV_FACT_MODEL_SPEC.md."
   },
   "id_format": {
     "pattern": "MV-{domain_prefix}-{YYYYMMDD}-{seq}",
