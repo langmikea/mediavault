@@ -1,91 +1,48 @@
 {
   "_meta": {
-    "version": "1.0",
-    "source_of_truth": "C:\\AI\\Platform\\MediaVault\\core\\tag_vocabulary.json",
-    "note": "This file governs all controlled tag categories. UI and ingest engine both read from here. Do not add ad-hoc tags — extend this file instead."
+    "version": "2.0",
+    "authority": "NON-AUTHORITATIVE REFERENCE. The live DB (core/mediavault.sqlite: vocabulary + tags tables) is the canonical vocabulary head (MV_VOCAB_RECONCILE_PLAN-20260624 F1/F3). No runtime code reads this file; it is a generated snapshot for human reference. Regenerate from the DB after vocabulary changes.",
+    "generated": "2026-07-07",
+    "generated_from": "mediavault.sqlite post vocab-reconcile Stages 0-4 (293 artifacts, 210 registry slugs)",
+    "format": "values are lower_snake_case (underscore canonical, F2); namespaces mirror the vocabulary table (tier/sort/display); values mirror the tags registry (all have live usage > 0 per F7)",
+    "retired_namespaces": { "unsorted": "2026-05-19", "platform": "2026-05-24" }
   },
-  "domains": ["hunter_root", "genealogy", "personal"],
-  "tag_categories": {
-    "year_era": {
-      "label": "Year / Era",
-      "multi": true,
-      "values": [
-        "2012", "2013", "2014", "2015", "2016", "2017", "2018",
-        "2019", "2020", "2021", "2022", "2023", "2024", "2025",
-        "era-unknown"
-      ]
+  "namespaces": {
+    "year":         { "label": "Year",         "tier": 1, "sort": 1, "values": ["2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"] },
+    "album":        { "label": "Album",        "tier": 1, "sort": 2, "values": ["arkansas", "crooked_home", "life_inside_a_wheel", "medusas_disco", "mimicking_the_sun_like_dandelions", "orphic_grimoire", "phone_recordings_ep", "rarities", "run_with_the_hunt", "skipping_stones_that_sink_before_theyre_thrown", "they_finally_cracked_me"] },
+    "song":         { "label": "Song",         "tier": 1, "sort": 3, "values": ["94", "a_pot_song", "bad_sign", "book_upon_my_shelf", "brain_cell", "california_sober", "cant_outshine_the_truth", "chase_the_dragon", "cheap_wine", "cocoon", "cookin_in_the_bathroom", "cusp_of_the_mend", "depresto", "dont_blame_the_breeze", "echo_calls_her_name", "family_tree", "favorite_friend", "few_steps_back", "fix_my_head", "flash_in_the_pan", "free_to_roam_the_cage", "friendly_fire", "go_get_it", "good_on_paper", "grain_of_rice", "greek_fire", "hand_in_the_fire", "homestead", "hook_or_the_worm", "identity", "if_the_body_is_a_temple", "impossible_itch", "just_for_kicks", "killer_to_killer", "lampshade", "let_the_rhythm", "little_red_riding_hood", "little_red_riding_hood_sam_the_sham_the_pharaohs_cover", "low", "moving_with_the_storm_shes_not_my_queen", "music_on_my_mind", "my_brothers_bones", "norma_jean", "nothin_wrong", "officer", "out_of_my_hands", "patience_in_the_dark", "people_are_programs", "puzzles", "quicksand_sinking", "reverend", "run_from_the_devil", "same_page", "shake_it_off_of_me", "shapeshifter", "silly_situation", "silver_lining", "silver_lining_reprise", "sleight_of_hand", "so_sick", "soul_sucker", "straitlaced", "string_up_a_necklace", "talker_with_a_broken_jaw", "television_head", "the_devil_is_the_culprit", "the_keeper", "the_shade", "the_water", "tongue_in_cheek", "town_rat_heathen", "undertow", "upper_hand", "vampire_song", "weathervane", "what_i_felt", "wildfire", "with_great_pleasure"] },
+    "venue":        { "label": "Venue",        "tier": 1, "sort": 4, "values": ["chameleon_club", "xl_live"] },
+    "people":       { "label": "People",       "tier": 1, "sort": 5, "values": ["alex_aument", "anders_osborne", "anthony_procopio", "chad_cromwell", "david_kalmusky", "justin_wohlfeil", "lindsay_lou", "marc_rogers", "nick_root", "tyler", "wynton_huddle"] },
+    "band":         { "label": "Band",         "tier": 1, "sort": 6, "values": ["hunter_root", "medusas_disco"], "note": "renamed from `bands` 2026-07-07 (Stage 4, D-d). Distinct from the lineup value `band`." },
+    "era":          { "label": "Era",          "tier": 1, "sort": 7, "values": ["breakthrough", "early_days", "finding_the_sound", "on_the_road", "recent", "rwth"] },
+    "topic":        { "label": "Topic",        "tier": 1, "sort": 8, "values": ["family", "gear", "influences", "recording", "release", "roots", "songwriting", "touring"] },
+    "source":       { "label": "Source",       "tier": 2, "sort": 1, "values": ["bandcamp", "facebook", "instagram", "local", "other", "press", "reverbnation", "youtube"], "note": "collapsed 2026-07-07 (Stage 3, F6): one value per artifact, tag == source_platform column; rule URL-host > column > tag; web folded into other; distrokid dropped (zero usage)." },
+    "type":         { "label": "Type",         "tier": 2, "sort": 2, "values": ["audio", "mp3", "music_video", "poster", "video"] },
+    "format":       { "label": "Format",       "tier": 2, "sort": 3, "values": ["photo", "short", "text", "video", "web"], "note": "LIVE (24 occurrences). TAXONOMY_v1 targets routing into type/attributes; retirement deferred per F5." },
+    "release_type": { "label": "Release Type", "tier": 2, "sort": 4, "values": ["single"] },
+    "author":       { "label": "Author",       "tier": 3, "sort": 2, "values": ["hunter_root", "violet_lempke"] },
+    "scope":        { "label": "Scope",        "tier": 3, "sort": 4, "values": ["hunter_root"] },
+    "artifact_kind": { "label": "Artifact Kind", "tier": 3, "sort": 5, "values": ["cover", "thumbnail", "transcript"], "note": "LIVE (55 occurrences). Routing/retirement deferred per F5." },
+    "content_kind": { "label": "Content Kind", "tier": 3, "sort": 6, "values": ["announcement", "candid", "cover", "interview", "live", "lyrics", "music", "official", "other", "performance", "press", "studio"], "note": "LIVE (175 occurrences), export- and client-coupled (KIND_RANK, ContentKindBadge). KEPT per F4; distinct from the artifacts.kind column." },
+    "event":        { "label": "Event",        "tier": 3, "sort": 7, "values": ["advance_tickets", "event_listing", "fall_tour", "live_show", "rehearsal", "ticketing", "tour", "tour_announcement"] },
+    "lineup":       { "label": "Lineup",       "tier": 3, "sort": 8, "values": ["band", "solo"], "note": "single-valued axis (full-band vs solo). The value `band` here is NOT the Tier-1 `band` namespace." },
+    "attributes":   { "label": "Attributes",   "tier": 3, "sort": 9, "values": ["account_hacked", "artist_message", "artist_page", "common", "defiant", "digital", "early_stages", "early_version", "family", "fan", "fan_cover_song", "gear", "indieartist", "lancaster_pa", "link", "loss", "lyme_disease", "mental_health", "merch", "milestone", "new_music", "notable", "official", "personal", "pre_release", "promotional_post", "rare", "released", "snarky", "social", "song_page", "songwriting", "tribute", "unique"], "note": "flat multi-valued bag. `link` folded in from the stray presentation namespace 2026-07-07 (Stage 1, F8)." },
+    "exhibit":      { "label": "Exhibit",      "tier": null, "sort": null, "values": ["hunter_root"], "note": "routing namespace, on every artifact; export discovery keys on it. Un-retired 2026-07-07 (Stage 1, F9)." }
+  },
+  "kind_column": {
+    "label": "Kind",
+    "multi": false,
+    "values": ["performance", "release", "announcement", "studio", "candid", "interview", "fan"],
+    "value_meta": {
+      "performance":  { "label": "Performance" },
+      "release":      { "label": "Music" },
+      "announcement": { "label": "Announcement" },
+      "studio":       { "label": "In the Studio" },
+      "candid":       { "label": "Off Stage" },
+      "interview":    { "label": "(reserved)", "reserved": true },
+      "fan":          { "label": "(reserved)", "reserved": true }
     },
-    "content_type": {
-      "label": "Content Type",
-      "multi": true,
-      "values": [
-        "song", "interview", "press", "live-show", "rehearsal",
-        "artwork", "poster", "merch", "tour-announcement", "milestone"
-      ]
-    },
-    "song_reference": {
-      "label": "Song Reference",
-      "multi": true,
-      "freetext": true,
-      "note": "Song title exactly as known (e.g. Twisted Dentist, Atomic 7, Breed)"
-    },
-    "release_stage": {
-      "label": "Release Stage",
-      "multi": true,
-      "values": [
-        "released", "pre-release", "early-version", "demo", "cover-song"
-      ]
-    },
-    "subject": {
-      "label": "Subject",
-      "multi": true,
-      "values": [
-        "hunter", "nick-root", "band", "solo", "fan", "venue", "crowd"
-      ]
-    },
-    "topic": {
-      "label": "Topic",
-      "multi": true,
-      "values": [
-        "lyme-disease", "personal", "family", "tour", "show",
-        "new-music", "gear", "merch"
-      ]
-    },
-    "rarity": {
-      "label": "Rarity",
-      "multi": false,
-      "values": ["common", "notable", "rare", "unique"]
-    },
-    "preservation": {
-      "label": "Preservation",
-      "multi": false,
-      "values": ["standard", "flag-preserve"]
-    },
-    "permission": {
-      "label": "Permission",
-      "multi": false,
-      "values": [
-        "not-required", "not-requested", "requested", "granted", "denied"
-      ]
-    },
-    "kind": {
-      "label": "Kind",
-      "multi": false,
-      "values": [
-        "performance", "release", "announcement", "studio",
-        "candid", "interview", "fan"
-      ],
-      "value_meta": {
-        "performance":  { "label": "Performance" },
-        "release":      { "label": "Music" },
-        "announcement": { "label": "Announcement" },
-        "studio":       { "label": "In the Studio" },
-        "candid":       { "label": "Off Stage" },
-        "interview":    { "label": "(reserved)", "reserved": true },
-        "fan":          { "label": "(reserved)", "reserved": true }
-      },
-      "note": "Single-select governed field. Closed set mirrors the artifacts.kind CHECK constraint in mediavault.sqlite. Column is nullable in DB; ingest enforces leaf-required, containers exempt. 'interview' and 'fan' are reserved: present in the constraint but not yet surfaced in the UI."
-    }
+    "note": "The artifacts.kind COLUMN (CHECK constraint), not a tag namespace. Single-select; nullable in DB; ingest enforces leaf-required, containers exempt. `fact` joins this set in the later fact workstream (F10, Stage 7 rebuild) - NOT part of the vocab migration."
   },
   "id_format": {
     "pattern": "MV-{domain_prefix}-{YYYYMMDD}-{seq}",
