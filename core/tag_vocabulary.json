@@ -3,7 +3,7 @@
     "version": "2.0",
     "authority": "NON-AUTHORITATIVE REFERENCE. The live DB (core/mediavault.sqlite: vocabulary + tags tables) is the canonical vocabulary head (MV_VOCAB_RECONCILE_PLAN-20260624 F1/F3). No runtime code reads this file; it is a generated snapshot for human reference. Regenerate from the DB after vocabulary changes.",
     "generated": "2026-07-07",
-    "generated_from": "mediavault.sqlite post vocab-reconcile Stages 0-4 + fact-kind rebuild (FACT_KIND_PUV_PILOT-20260707 Stage 2; 293 artifacts, 211 registry slugs)",
+    "generated_from": "mediavault.sqlite post press-batch Stage 2 (PRESS_BATCH_INGEST-20260707; 299 artifacts, 211 registry slugs, speaker namespace added)",
     "format": "values are lower_snake_case (underscore canonical, F2); namespaces mirror the vocabulary table (tier/sort/display); values mirror the tags registry (all have live usage > 0 per F7)",
     "retired_namespaces": { "unsorted": "2026-05-19", "platform": "2026-05-24" }
   },
@@ -27,20 +27,22 @@
     "event":        { "label": "Event",        "tier": 3, "sort": 7, "values": ["advance_tickets", "event_listing", "fall_tour", "live_show", "rehearsal", "ticketing", "tour", "tour_announcement"] },
     "lineup":       { "label": "Lineup",       "tier": 3, "sort": 8, "values": ["band", "solo"], "note": "single-valued axis (full-band vs solo). The value `band` here is NOT the Tier-1 `band` namespace." },
     "attributes":   { "label": "Attributes",   "tier": 3, "sort": 9, "values": ["account_hacked", "artist_message", "artist_page", "common", "defiant", "digital", "early_stages", "early_version", "family", "fan", "fan_cover_song", "gear", "indieartist", "lancaster_pa", "link", "loss", "lyme_disease", "mental_health", "merch", "milestone", "new_music", "notable", "official", "personal", "pre_release", "promotional_post", "rare", "released", "snarky", "social", "song_page", "songwriting", "tribute", "unique"], "note": "flat multi-valued bag. `link` folded in from the stray presentation namespace 2026-07-07 (Stage 1, F8)." },
-    "exhibit":      { "label": "Exhibit",      "tier": null, "sort": null, "values": ["hunter_root"], "note": "routing namespace, on every artifact; export discovery keys on it. Un-retired 2026-07-07 (Stage 1, F9)." }
+    "exhibit":      { "label": "Exhibit",      "tier": null, "sort": null, "values": ["hunter_root"], "note": "routing namespace, on every artifact; export discovery keys on it. Un-retired 2026-07-07 (Stage 1, F9)." },
+    "speaker":      { "label": "Speaker",      "tier": 3, "sort": 10, "values": [], "note": "added 2026-07-07 (PRESS_BATCH Stage 1 V3, amended): quote-speaker axis for fact artifacts; values are person AND outlet slugs (person slugs shared with people:); values register at first use (Stage 3), hence empty here despite F7." }
   },
   "kind_column": {
     "label": "Kind",
     "multi": false,
-    "values": ["performance", "release", "announcement", "studio", "candid", "interview", "fan", "fact"],
+    "values": ["performance", "release", "announcement", "studio", "candid", "interview", "fan", "fact", "press"],
     "value_meta": {
       "performance":  { "label": "Performance" },
       "release":      { "label": "Music" },
       "announcement": { "label": "Announcement" },
       "studio":       { "label": "In the Studio" },
       "candid":       { "label": "Off Stage" },
-      "interview":    { "label": "(reserved)", "reserved": true },
+      "interview":    { "label": "Interview", "note": "activated 2026-07-07 (PRESS_BATCH Stage 1 V2); first inhabitants MV-20260617 batch" },
       "fan":          { "label": "(reserved)", "reserved": true },
+      "press":        { "label": "Press", "note": "added 2026-07-07 (PRESS_BATCH Stage 1 V1, table rebuild); covers press features AND reviews per V6" },
       "fact":         { "label": "Fact", "note": "PUV surface, not a browse chip; never emitted by ingest; display UI is a separate workstream (PUV_FACT_MODEL_SPEC)" }
     },
     "note": "The artifacts.kind COLUMN (CHECK constraint), not a tag namespace. Single-select; nullable in DB; ingest enforces leaf-required, containers exempt. `fact` joined the set 2026-07-07 (FACT_KIND_PUV_PILOT-20260707 Stage 2 table rebuild, per F10) - fact artifacts carry PUV facts per PUV_FACT_MODEL_SPEC.md."
@@ -62,3 +64,4 @@
     "filename_pattern": "{record_id}.jpg"
   }
 }
+
