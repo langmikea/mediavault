@@ -28,7 +28,7 @@
     "lineup":       { "label": "Lineup",       "tier": 3, "sort": 8, "values": ["band", "solo"], "note": "single-valued axis (full-band vs solo). The value `band` here is NOT the Tier-1 `band` namespace." },
     "attributes":   { "label": "Attributes",   "tier": 3, "sort": 9, "values": ["account_hacked", "artist_message", "artist_page", "common", "defiant", "digital", "early_stages", "early_version", "family", "fan", "fan_cover_song", "gear", "indieartist", "lancaster_pa", "link", "loss", "lyme_disease", "mental_health", "merch", "milestone", "new_music", "notable", "official", "personal", "pre_release", "promotional_post", "rare", "released", "snarky", "social", "song_page", "songwriting", "tribute", "unique"], "note": "flat multi-valued bag. `link` folded in from the stray presentation namespace 2026-07-07 (Stage 1, F8)." },
     "exhibit":      { "label": "Exhibit",      "tier": null, "sort": null, "values": ["hunter_root"], "note": "routing namespace, on every artifact; export discovery keys on it. Un-retired 2026-07-07 (Stage 1, F9)." },
-    "speaker":      { "label": "Speaker",      "tier": 3, "sort": 10, "values": [], "note": "added 2026-07-07 (PRESS_BATCH Stage 1 V3, amended): quote-speaker axis for fact artifacts; values are person AND outlet slugs (person slugs shared with people:); values register at first use (Stage 3), hence empty here despite F7." }
+    "speaker":      { "label": "Speaker",      "tier": 3, "sort": 10, "values": ["alex_aument", "americana_highways", "blue_harvest_beat", "harrison_giza", "hill_douglas", "hunter_root", "isthmus", "justin_wohlfeil", "lancaster_online", "michele_kelly", "michelle_osterhoudt", "nepaudio", "pa_musician", "sarah_kate_gittleman", "shore_fire_media", "the_country_note", "tyler", "whiskey_riff", "wynton_huddle"], "note": "added 2026-07-07 (PRESS_BATCH Stage 1 V3, amended): quote-speaker axis for fact artifacts; values are person AND outlet slugs (person slugs shared with people:); values registered at first use (Stage 3, 2026-07-07: 19 slugs, persons and outlets)." }
   },
   "kind_column": {
     "label": "Kind",
@@ -64,4 +64,5 @@
     "filename_pattern": "{record_id}.jpg"
   }
 }
+
 
